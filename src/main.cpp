@@ -3,6 +3,7 @@
 #include <iostream>
 #include <fstream>
 #include "log.h"
+#include "scanner.h"
 
 bool parse_args(int argc, char* argv[], std::string &src_file);
 void show_usage(std::string prog_name);
@@ -13,6 +14,7 @@ int main(int argc, char* argv[]) {
 	std::string src_file;
 	if (!parse_args(argc, argv, src_file)) return 1;
 	LOG(DEBUG) << "Begin scanning file: " << src_file;
+	Scanner scanner();
 
 	//// Test the levels
 	//LOG(DEBUG) << "Test debug";

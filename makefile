@@ -5,39 +5,37 @@
 PROJECT = compiler
 
 # Directory Definitions
-# src/		- Source code directory
-# bin/		- Executables are built here
-# obj/		- Intermediate object files are built here
-SRCDIR		= ./src
-OBJDIR		= ./obj
-BINDIR		= ./bin
-LOGDIR		= ./log
+# src/	- Source code directory
+# bin/	- Executables are built here
+# obj/	- Intermediate object files are built here
+SRCDIR	= ./src
+OBJDIR	= ./obj
+BINDIR	= ./bin
+LOGDIR	= ./log
 
 # Tell Make which shell to use
-SHELL 		= bash
+SHELL 	= bash
 
 # Compiler Info
-CC 			= g++
-CFLAGS 		= -g -Wall
+CC 		= g++
+CFLAGS 	= -g -Wall
 
 TARGET	= $(BINDIR)/$(PROJECT)
-OBJS	= $(addprefix $(OBJDIR)/, main.o log.o)
-DIRS	= $(SRCDIR) $(OBJDIR) $(BINDIR) $(LOGDIR)
+CPP_SRC	= $(addprefix $(SRCDIR)/, log.cpp main.cpp scanner.cpp)
+H_SRC	= $(addprefix $(SRCDIR)/, scanner.h log.h)
+DIRS	= $(BINDIR) $(LOGDIR)
 
 # Build Targets
 .PHONY: clean
 
 all: $(DIRS) $(TARGET)
 
-$(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS)
-
-$(OBJDIR)/%.o: $(SRCDIR)/%.cpp
-	$(CC) -c $(CFLAGS) $< -o $@
+$(TARGET): $(CPP_SRC) $(H_SRC)
+	$(CC) $(CFLAGS) -o $(TARGET) $(CPP_SRC)
 
 $(DIRS):
 	mkdir -p $@
 
 clean:
-	rm -rf $(OBJDIR) $(BINDIR) $(LOGDIR)
+	rm -rf $(DIRS)
 
