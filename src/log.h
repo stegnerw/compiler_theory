@@ -36,7 +36,7 @@ public:
 
 	~LOG() {
 		if(written) {
-			std::cout << std::endl << COL_RST;
+			std::cout << COL_RST << std::endl;
 		}
 		written = false;
 	}

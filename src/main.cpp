@@ -14,13 +14,14 @@ int main(int argc, char* argv[]) {
 	std::string src_file;
 	if (!parse_args(argc, argv, src_file)) return 1;
 	LOG(DEBUG) << "Begin scanning file: " << src_file;
-	Scanner scanner();
-
-	//// Test the levels
-	//LOG(DEBUG) << "Test debug";
-	//LOG(INFO) << "Test info";
-	//LOG(WARN) << "Test warning";
-	//LOG(ERROR) << "Test error";
+	Scanner scanner;
+	scanner.init(src_file);
+	token t;
+	do {
+		t = scanner.getToken();
+		LOG(DEBUG) << "New token:\t" << t.val;
+		LOG(DEBUG) << "Token type:\t" << t.type;
+	}while (t.type != TOK_EOF);
 	return 0;
 }
 
@@ -34,13 +35,6 @@ bool parse_args(int argc, char* argv[], std::string &src_file) {
 				break;
 			case 'i': {
 					src_file = optarg;
-					std::ifstream src_fstream(src_file);
-					if (!src_fstream.good()) {
-						LOG(ERROR) << "Invalid file: " << src_file;
-						LOG(ERROR) << "Make sure it exists and you have read"
-							<< " permissions.";
-						error = true;
-					}
 					break;
 				}
 			case 'v':
