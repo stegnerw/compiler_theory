@@ -33,10 +33,9 @@ bool parse_args(int argc, char* argv[], std::string &src_file) {
 			case 'h':
 				error = true;
 				break;
-			case 'i': {
-					src_file = optarg;
-					break;
-				}
+			case 'i':
+				src_file = optarg;
+				break;
 			case 'v':
 				// setMinLevel handles the bound checking
 				if (!LOG::setMinLevel(std::atoi(optarg))) {
