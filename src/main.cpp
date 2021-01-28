@@ -19,8 +19,7 @@ int main(int argc, char* argv[]) {
 	token t;
 	do {
 		t = scanner.getToken();
-		LOG(DEBUG) << "New token:\t" << t.val;
-		LOG(DEBUG) << "Token type:\t" << t.type;
+		LOG(DEBUG) << "New token:\t" << t.getStr();
 	}while (t.type != TOK_EOF);
 	return 0;
 }

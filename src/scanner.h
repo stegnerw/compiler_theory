@@ -4,6 +4,7 @@
 #include <string>
 #include <fstream>
 #include <unordered_map>
+#include <sstream>
 
 enum c_type {
 	C_INVALID,	// Anything not listed below - the default
@@ -88,6 +89,11 @@ struct token {
 	token_type type;
 	std::string val;
 	token() : type(TOK_INVALID), val("Uninitialized") {};
+	std::string getStr() {
+		std::ostringstream ss;
+		ss << "< " << type << ",\t" << val << " >";
+		return ss.str();
+	};
 };
 
 class Scanner {
