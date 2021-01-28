@@ -4,12 +4,16 @@
 #include <unordered_map>
 #include "log.h"
 
-Scanner::Scanner() : warned(false), errored(false), line_number(0){}
+Scanner::Scanner() : warned(false), errored(false), line_number(1) {}
+
+Scanner::~Scanner() {
+	if (src_fstream) src_fstream.close();
+}
 
 bool Scanner::init(std::string &src_file) {
 	warned = false;
 	errored = false;
-	line_number = 0;
+	line_number = 1;
 	src_fstream.open(src_file, std::ios::in);
 	if (!src_fstream) {
 		LOG(ERROR) << "Invalid file: " << src_file;
@@ -24,14 +28,119 @@ bool Scanner::init(std::string &src_file) {
 
 token Scanner::getToken() {
 	struct token t;
-	if (!src_fstream) {
-		LOG(ERROR) << "Could not read from file.";
-		t.type = TOK_EOF;
+	std::string val = "";
+	int c = src_fstream.get();
+	while ((c_type_tab[c] == C_WHITE) || (isComment(c))) {
+		eatWhiteSpace(c);
+		eatLineComment(c);
+		eatBlockComment(c);
+	}
+	if (c == EOF) {
+		t.type	= TOK_EOF;
+		t.val	= "EOF";
 		return t;
 	}
-	t.type = TOK_EOF;
-	t.val = "Need anime cat girl";
+	c_type ct = c_type_tab[c];
+	switch (ct) {
+		// Alphanumerics (symbols: IDs and RWs)
+		// Operators (Assignment handles colon)
+		// Numerical constant
+		// String literal
+		// Punctuation
+		case C_PERIOD:
+			t.type	= TOK_PERIOD;
+			t.val	= ".";
+			break;
+		case C_COMMA:
+			t.type	= TOK_COMMA;
+			t.val	= ",";
+			break;
+		case C_SEMICOL:
+			t.type	= TOK_SEMICOL;
+			t.val	= ";";
+			break;
+		// TOK_COLON is handled by TOK_OP_ASS since it starts with C_COLON
+		case C_LPAREN:
+			t.type	= TOK_LPAREN;
+			t.val	= "(";
+			break;
+		case C_RPAREN:
+			t.type	= TOK_RPAREN;
+			t.val	= ")";
+			break;
+		case C_LBRACK:
+			t.type	= TOK_LBRACK;
+			t.val	= "[";
+			break;
+		case C_RBRACK:
+			t.type	= TOK_RBRACK;
+			t.val	= "]";
+			break;
+		case C_LBRACE:
+			t.type	= TOK_LBRACE;
+			t.val	= "{";
+			break;
+		case C_RBRACE:
+			t.type	= TOK_RBRACE;
+			t.val	= "}";
+			break;
+		default:
+			reportError("Invalid character/token encountered");
+			t.type	= TOK_INVALID;
+			t.val	= static_cast<char>(c);
+			break;
+	}
 	return t;
+}
+
+bool Scanner::isComment(int c) {
+	return isLineComment(c) || isBlockComment(c);
+}
+
+bool Scanner::isLineComment(int c) {
+	int next_c = src_fstream.peek();
+	return (c == '/' && next_c == '/');
+}
+
+bool Scanner::isBlockComment(int c) {
+	int next_c = src_fstream.peek();
+	return (c == '/' && next_c == '*');
+}
+
+bool Scanner::isBlockEnd(int c) {
+	int next_c = src_fstream.peek();
+	return (c == '*' && next_c == '/');
+}
+
+void Scanner::eatWhiteSpace(int &c) {
+	while ((c != EOF) && (c_type_tab[c] == C_WHITE)) {
+		if (c == '\n') line_number++;
+		c = src_fstream.get();
+	}
+}
+
+void Scanner::eatLineComment(int &c) {
+	if (isLineComment(c)) {
+		do {
+			c = src_fstream.get();
+		} while ((c != '\n') && (c != EOF));
+	}
+}
+
+void Scanner::eatBlockComment(int &c) {
+	int block_level = 0;
+	do {
+		if (isBlockComment(c)) {
+			block_level++;
+			c = src_fstream.get();
+		}
+		if (isBlockEnd(c)) {
+			block_level--;
+			c = src_fstream.get();
+		}
+		if (c == '\n') line_number++;
+		c = src_fstream.get();
+	} while ((block_level > 0) && (c != EOF));
 }
 
 void Scanner::reportWarn(const std::string &msg) {
@@ -48,60 +157,57 @@ void Scanner::makeCTab() {
 	for (int i = 0; i < 128; i++) {
 		switch (i) {
 			case '.':
-				c_type_table[i] = C_PERIOD; break;
+				c_type_tab[i] = C_PERIOD; break;
 			case '_':
-				c_type_table[i] = C_UNDER; break;
+				c_type_tab[i] = C_UNDER; break;
 			case ';':
-				c_type_table[i] = C_SEMICOL; break;
+				c_type_tab[i] = C_SEMICOL; break;
 			case ':':
-				c_type_table[i] = C_COLON; break;
+				c_type_tab[i] = C_COLON; break;
 			case ',':
-				c_type_table[i] = C_COMMA; break;
+				c_type_tab[i] = C_COMMA; break;
 			case '(':
-				c_type_table[i] = C_LPAREN; break;
+				c_type_tab[i] = C_LPAREN; break;
 			case ')':
-				c_type_table[i] = C_RPAREN; break;
+				c_type_tab[i] = C_RPAREN; break;
 			case '[':
-				c_type_table[i] = C_LBRACK; break;
+				c_type_tab[i] = C_LBRACK; break;
 			case ']':
-				c_type_table[i] = C_RBRACK; break;
+				c_type_tab[i] = C_RBRACK; break;
 			case '{':
-				c_type_table[i] = C_LBRACE; break;
+				c_type_tab[i] = C_LBRACE; break;
 			case '}':
-				c_type_table[i] = C_RBRACE; break;
+				c_type_tab[i] = C_RBRACE; break;
 			case '&':
 			case '|':
-				c_type_table[i] = C_EXPR; break;
+				c_type_tab[i] = C_EXPR; break;
 			case '<':
 			case '>':
 			case '=':
 			case '!':
-				c_type_table[i] = C_RELAT; break;
+				c_type_tab[i] = C_RELAT; break;
 			case '+':
 			case '-':
-				c_type_table[i] = C_ARITH; break;
+				c_type_tab[i] = C_ARITH; break;
 			case '/':
-				c_type_table[i] = C_FSLASH; break;
-			case '\\':
-				c_type_table[i] = C_BSLASH; break;
 			case '*':
-				c_type_table[i] = C_TERM; break;
+				c_type_tab[i] = C_TERM; break;
 			case '"':
-				c_type_table[i] = C_QUOTE; break;
+				c_type_tab[i] = C_QUOTE; break;
 			case ' ':
 			case '\t':
 			case '\r':
 			case '\n':
-				c_type_table[i] = C_WHITE; break;
+				c_type_tab[i] = C_WHITE; break;
 			default:
 				if (i >= 'a' && i <= 'z') {
-					c_type_table[i] = C_LOWER;
+					c_type_tab[i] = C_LOWER;
 				} else if (i >= 'A' && i <= 'Z') {
-					c_type_table[i] = C_UPPER;
+					c_type_tab[i] = C_UPPER;
 				}else if (i >= '0' && i <= '9') {
-					c_type_table[i] = C_DIGIT;
+					c_type_tab[i] = C_DIGIT;
 				} else {
-					c_type_table[i] = C_INVALID;
+					c_type_tab[i] = C_INVALID;
 				}
 		}
 	}

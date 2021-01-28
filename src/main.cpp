@@ -15,7 +15,7 @@ int main(int argc, char* argv[]) {
 	if (!parse_args(argc, argv, src_file)) return 1;
 	LOG(DEBUG) << "Begin scanning file: " << src_file;
 	Scanner scanner;
-	scanner.init(src_file);
+	if (!scanner.init(src_file)) return 1;
 	token t;
 	do {
 		t = scanner.getToken();

@@ -24,11 +24,10 @@ enum c_type {
 	C_EXPR,		// & |
 	C_RELAT,	// < > = !
 	C_ARITH,	// + -
-	C_FSLASH,	// /
-	C_BSLASH,	// [\]
-	C_TERM,		// * (note / is technically term but is used in comments))
+	C_TERM,		// / *
 	C_QUOTE,	// "
-	C_WHITE		// space, tab, newline, carriage return
+	C_WHITE,	// space, tab, newline, carriage return
+	C_EOF		// EOF char
 };
 
 /*
@@ -71,10 +70,10 @@ enum token_type {
 	TOK_IDENT,		// Identifiers
 	TOK_NUM,		// Numbers (float and int)
 	TOK_STR,		// String literals: "[^"]"
-	TOK_PER,		// .
+	TOK_PERIOD,		// .
 	TOK_COMMA,		// ,
 	TOK_SEMICOL,	// ;
-	TOK_COL,		// :
+	TOK_COLON,		// :
 	TOK_LPAREN,		// (
 	TOK_RPAREN,		// )
 	TOK_LBRACK,		// [
@@ -94,15 +93,23 @@ struct token {
 class Scanner {
 	public:
 		Scanner();
+		~Scanner();
 		bool init(std::string &src_file);
 		token getToken();
 	private:
 		bool warned;
 		bool errored;
 		int line_number;
-		c_type c_type_table[128];
+		c_type c_type_tab[128];
 		std::unordered_map<std::string, token_type> sym_tab;
 		std::ifstream src_fstream;
+		bool isComment(int c);
+		bool isLineComment(int c);
+		bool isBlockComment(int c);
+		bool isBlockEnd(int c);
+		void eatWhiteSpace(int &c);
+		void eatLineComment(int &c);
+		void eatBlockComment(int &c);
 		void reportWarn(const std::string &msg);
 		void reportError(const std::string &msg);
 		void makeCTab();
