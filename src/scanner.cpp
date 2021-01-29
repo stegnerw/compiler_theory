@@ -28,119 +28,199 @@ bool Scanner::init(std::string &src_file) {
 
 token Scanner::getToken() {
 	struct token t;
-	std::string val = "";
-	int c = src_fstream.get();
-	while ((c_type_tab[c] == C_WHITE) || (isComment(c))) {
-		eatWhiteSpace(c);
-		eatLineComment(c);
-		eatBlockComment(c);
+	nextChar();
+	while ((curr_ct == C_WHITE) || (isComment())) {
+		if (curr_ct == C_WHITE) eatWhiteSpace();
+		if (isLineComment()) eatLineComment();
+		if (isBlockComment()) eatBlockComment();
 	}
-	if (c == EOF) {
+	if (curr_ct == C_EOF) {
 		t.type	= TOK_EOF;
 		t.val	= "EOF";
 		return t;
 	}
-	c_type ct = c_type_tab[c];
-	switch (ct) {
+	switch (curr_ct) {
 		// Alphanumerics (symbols: IDs and RWs)
+		case C_UPPER:
+		case C_LOWER:
+			while (true) {
+				// IDs are case insensitive as per language spec
+				if (curr_ct == C_UPPER) {
+					curr_c += 'a' - 'A';
+					curr_ct = C_LOWER;
+				}
+				t.val += static_cast<char>(curr_c);
+				if (next_ct == C_UPPER || next_ct == C_LOWER
+						|| next_ct == C_DIGIT) {
+					nextChar();
+				} else {
+					break;
+				}
+			}
+			if (sym_tab.find(t.val) == sym_tab.end()) {
+				t.type = TOK_IDENT;
+			} else {
+				t.type = sym_tab[t.val];
+			}
+			break;
 		// Operators (Assignment handles colon)
+		case C_EXPR:
+			t.type = TOK_OP_EXPR;
+			t.val += static_cast<char>(curr_c);
+			break;
+		case C_ARITH:
+			t.type = TOK_OP_ARITH;
+			t.val += static_cast<char>(curr_c);
+			break;
+		case C_RELAT:
+			t.type = TOK_OP_RELAT;
+			t.val += static_cast<char>(curr_c);
+			if (next_c == '=') {
+				nextChar();
+				t.val += static_cast<char>(curr_c);
+			}
+			break;
+		case C_COLON:
+			t.val += static_cast<char>(curr_c);
+			if (next_c == '=') {
+				nextChar();
+				t.val += static_cast<char>(curr_c);
+				t.type = TOK_OP_ASS;
+			} else {
+				t.type = TOK_COLON;
+			}
+			break;
+		case C_TERM:
+			t.type = TOK_OP_TERM;
+			t.val += static_cast<char>(curr_c);
+			break;
 		// Numerical constant
+		case C_DIGIT:
+			t.type = TOK_NUM;
+			t.val += curr_c;
+			while (next_ct == C_DIGIT || next_ct == C_UNDER
+					|| next_ct == C_PERIOD){
+				nextChar();
+				t.val += curr_c;
+			}
+			break;
 		// String literal
+		case C_QUOTE:
+			t.type	= TOK_STR;
+			do {
+				t.val += static_cast<char>(curr_c);
+				nextChar();
+			} while ((curr_ct != C_QUOTE) && (curr_ct != C_EOF));
+			if (curr_ct == C_EOF) {
+				t.val += '"';
+				reportWarn("EOF before string termination.");
+			}
+			break;
 		// Punctuation
 		case C_PERIOD:
-			t.type	= TOK_PERIOD;
-			t.val	= ".";
+			t.type = TOK_PERIOD;
+			t.val += ".";
 			break;
 		case C_COMMA:
-			t.type	= TOK_COMMA;
-			t.val	= ",";
+			t.type = TOK_COMMA;
+			t.val += ",";
 			break;
 		case C_SEMICOL:
-			t.type	= TOK_SEMICOL;
-			t.val	= ";";
+			t.type = TOK_SEMICOL;
+			t.val += ";";
 			break;
 		// TOK_COLON is handled by TOK_OP_ASS since it starts with C_COLON
 		case C_LPAREN:
-			t.type	= TOK_LPAREN;
-			t.val	= "(";
+			t.type = TOK_LPAREN;
+			t.val += "(";
 			break;
 		case C_RPAREN:
-			t.type	= TOK_RPAREN;
-			t.val	= ")";
+			t.type = TOK_RPAREN;
+			t.val += ")";
 			break;
 		case C_LBRACK:
-			t.type	= TOK_LBRACK;
-			t.val	= "[";
+			t.type = TOK_LBRACK;
+			t.val += "[";
 			break;
 		case C_RBRACK:
-			t.type	= TOK_RBRACK;
-			t.val	= "]";
+			t.type = TOK_RBRACK;
+			t.val += "]";
 			break;
 		case C_LBRACE:
-			t.type	= TOK_LBRACE;
-			t.val	= "{";
+			t.type = TOK_LBRACE;
+			t.val += "{";
 			break;
 		case C_RBRACE:
-			t.type	= TOK_RBRACE;
-			t.val	= "}";
+			t.type = TOK_RBRACE;
+			t.val += "}";
 			break;
 		default:
 			reportError("Invalid character/token encountered");
-			t.type	= TOK_INVALID;
-			t.val	= static_cast<char>(c);
+			t.type = TOK_INVALID;
+			t.val += static_cast<char>(curr_c);
 			break;
 	}
 	return t;
 }
 
-bool Scanner::isComment(int c) {
-	return isLineComment(c) || isBlockComment(c);
-}
-
-bool Scanner::isLineComment(int c) {
-	int next_c = src_fstream.peek();
-	return (c == '/' && next_c == '/');
-}
-
-bool Scanner::isBlockComment(int c) {
-	int next_c = src_fstream.peek();
-	return (c == '/' && next_c == '*');
-}
-
-bool Scanner::isBlockEnd(int c) {
-	int next_c = src_fstream.peek();
-	return (c == '*' && next_c == '/');
-}
-
-void Scanner::eatWhiteSpace(int &c) {
-	while ((c != EOF) && (c_type_tab[c] == C_WHITE)) {
-		if (c == '\n') line_number++;
-		c = src_fstream.get();
+void Scanner::nextChar() {
+	if (src_fstream) {
+		if (curr_c == '\n') line_number++;
+		curr_c = src_fstream.get();
+		curr_ct = curr_c < 0 ? C_EOF : c_type_tab[curr_c];
+		next_c = src_fstream.peek();
+		next_ct = next_c < 0 ? C_EOF : c_type_tab[next_c];
+	} else {
+		reportError("Could not read character from file.");
 	}
 }
 
-void Scanner::eatLineComment(int &c) {
-	if (isLineComment(c)) {
+bool Scanner::isComment() {
+	return isLineComment() || isBlockComment();
+}
+
+bool Scanner::isLineComment() {
+	return (curr_c == '/' && next_c == '/');
+}
+
+bool Scanner::isBlockComment() {
+	return (curr_c == '/' && next_c == '*');
+}
+
+bool Scanner::isBlockEnd() {
+	return (curr_c == '*' && next_c == '/');
+}
+
+void Scanner::eatWhiteSpace() {
+	while ((curr_ct != C_EOF) && (curr_ct == C_WHITE)) {
+		nextChar();
+	}
+}
+
+void Scanner::eatLineComment() {
+	if (isLineComment()) {
 		do {
-			c = src_fstream.get();
-		} while ((c != '\n') && (c != EOF));
+			nextChar();
+		} while ((curr_c != '\n') && (curr_ct != C_EOF));
 	}
 }
 
-void Scanner::eatBlockComment(int &c) {
+void Scanner::eatBlockComment() {
 	int block_level = 0;
 	do {
-		if (isBlockComment(c)) {
+		if (isBlockComment()) {
 			block_level++;
-			c = src_fstream.get();
+			nextChar();
 		}
-		if (isBlockEnd(c)) {
+		if (isBlockEnd()) {
 			block_level--;
-			c = src_fstream.get();
+			nextChar();
 		}
-		if (c == '\n') line_number++;
-		c = src_fstream.get();
-	} while ((block_level > 0) && (c != EOF));
+		nextChar();
+	} while ((block_level > 0) && (curr_ct != C_EOF));
+	if (curr_ct == C_EOF) {
+		reportWarn("EOF before block comment termination.");
+	}
 }
 
 void Scanner::reportWarn(const std::string &msg) {

@@ -88,7 +88,7 @@ enum token_type {
 struct token {
 	token_type type;
 	std::string val;
-	token() : type(TOK_INVALID), val("Uninitialized") {};
+	token() : type(TOK_INVALID), val("") {};
 	std::string getStr() {
 		std::ostringstream ss;
 		ss << "< " << type << ",\t" << val << " >";
@@ -106,16 +106,21 @@ class Scanner {
 		bool warned;
 		bool errored;
 		int line_number;
+		int curr_c;
+		c_type curr_ct;
+		int next_c;
+		c_type next_ct;
 		c_type c_type_tab[128];
 		std::unordered_map<std::string, token_type> sym_tab;
 		std::ifstream src_fstream;
-		bool isComment(int c);
-		bool isLineComment(int c);
-		bool isBlockComment(int c);
-		bool isBlockEnd(int c);
-		void eatWhiteSpace(int &c);
-		void eatLineComment(int &c);
-		void eatBlockComment(int &c);
+		void nextChar();
+		bool isComment();
+		bool isLineComment();
+		bool isBlockComment();
+		bool isBlockEnd();
+		void eatWhiteSpace();
+		void eatLineComment();
+		void eatBlockComment();
 		void reportWarn(const std::string &msg);
 		void reportError(const std::string &msg);
 		void makeCTab();
