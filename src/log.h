@@ -14,6 +14,8 @@
 
 #include <string>
 #include <iostream>
+#include <fstream>
+#include <sstream>
 
 // Terminal color definitions
 #define COL_RST  "\x1B[0m"
@@ -22,53 +24,21 @@
 #define COL_YEL  "\x1B[33m"
 #define COL_RED  "\x1B[31m"
 
-enum loglevel {DEBUG, INFO, WARN, ERROR};
+enum LOG_LEVEL {DEBUG, INFO, WARN, ERROR};
 
 class LOG {
 public:
-	static loglevel min_level;
-
-	LOG(loglevel type) {
-		msg_level = type;
-		std::cout << colors[type];
-		operator << ("["+labels[type]+"]\t");
-	}
-
-	~LOG() {
-		if(written) {
-			std::cout << COL_RST << std::endl;
-		}
-		written = false;
-	}
-
-	template<class T>
-	LOG& operator<<(const T &msg) {
-		if(msg_level >= min_level) {
-			std::cout << msg;
-			written = true;
-		}
-		return *this;
-	}
-
-	/*
-	 * Set min_level from an int
-	 * Also does range checking
-	 */
-	static bool setMinLevel(int l) {
-		switch (l) {
-			case 0:		min_level = DEBUG;	break;
-			case 1:		min_level = INFO;	break;
-			case 2:		min_level = WARN;	break;
-			case 3:		min_level = ERROR;	break;
-			default:	return false;		break;
-		}
-		return true;
-	}
+	static std::stringstream ss;
+	LOG(LOG_LEVEL type);
+	static bool setLogFile(std::string f);
+	static bool setMinLevel(int l);
 private:
-	bool written = false;
-	loglevel msg_level = DEBUG;
-	const std::string labels[4] = {"DEBUG", "INFO ", "WARN ", "ERROR"};
-	const std::string colors[4] = {COL_CYN, COL_WHT, COL_YEL, COL_RED};
+	static LOG_LEVEL min_level;
+	static std::string log_file;
+	static std::ofstream log_fstream;
+	static const std::string labels[4];
+	static const std::string colors[4];
+	LOG_LEVEL msg_level;
 };
 
 #endif // LOG_H

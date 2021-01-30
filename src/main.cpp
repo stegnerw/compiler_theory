@@ -6,23 +6,25 @@
 #include "token.h"
 #include "scanner.h"
 
-bool parse_args(int argc, char* argv[], std::string &src_file);
+bool parse_args(int argc, char* argv[], std::string &src_file,
+		std::string &log_file);
 void show_usage(std::string prog_name);
 void welcome_msg();
 
 int main(int argc, char* argv[]) {
 	welcome_msg();
-	std::string src_file;
-	if (!parse_args(argc, argv, src_file)) return 1;
-	LOG(DEBUG) << "Begin scanning file: " << src_file;
+	std::string src_file, log_file;
+	if (!parse_args(argc, argv, src_file, log_file)) return 1;
+	LOG::ss << "Begin scanning file: " << src_file;
+	LOG(LOG_LEVEL::DEBUG);
 	Scanner scanner;
 	if (!scanner.init(src_file)) return 1;
 	Token* t(NULL);
 	bool scanning = true;
 	while (scanning) {
 		t = scanner.getToken();
-		LOG(DEBUG) << "New token:\t" << t->getStr();
-		//if (t->getType() == TOK_IDENT) LOG(INFO) << t->val;
+		LOG::ss << "New token:\t" << t->getStr();
+		LOG(LOG_LEVEL::DEBUG);
 		if (t->getType() == TOK_EOF) scanning = false;
 		delete t;
 		t = NULL;
@@ -30,27 +32,39 @@ int main(int argc, char* argv[]) {
 	return 0;
 }
 
-bool parse_args(int argc, char* argv[], std::string &src_file) {
+bool parse_args(int argc, char* argv[], std::string &src_file,
+		std::string &log_file) {
 	int opt;
 	bool error = false;
-	while ((opt = getopt(argc, argv, "hi:v:")) != -1) {
+	while ((opt = getopt(argc, argv, "hv:i:l:")) != -1) {
 		switch (opt) {
 			case 'h':
 				error = true;
 				break;
-			case 'i':
-				src_file = optarg;
-				break;
 			case 'v':
 				// setMinLevel handles the bound checking
 				if (!LOG::setMinLevel(std::atoi(optarg))) {
-					LOG(ERROR) << "Could not set verbosity level.";
-					LOG(ERROR) << "Pass an integer from 0-3.";
+					LOG::ss << "Could not set verbosity level.";
+					LOG(LOG_LEVEL::ERROR);
+					LOG::ss << "Pass an integer from 0-3.";
+					LOG(LOG_LEVEL::ERROR);
 					error = true;
 				}
 				break;
+			case 'i':
+				src_file = optarg;
+				break;
+			case 'l':
+				if (!LOG::setLogFile(optarg)) {
+					LOG::ss << "Cannot open file for write: " << optarg;
+					LOG(LOG_LEVEL::ERROR);
+					error = true;
+				}
+				log_file = optarg;
+				break;
 			case '?':
-				LOG(ERROR) << "Invalid flag: " << (char)optopt;
+				LOG::ss << "Invalid flag: " << static_cast<char>(optopt);
+				LOG(LOG_LEVEL::ERROR);
 				error = true;
 				break;
 		}

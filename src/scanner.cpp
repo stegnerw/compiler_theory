@@ -16,9 +16,10 @@ bool Scanner::init(std::string &src_file) {
 	line_number = 1;
 	src_fstream.open(src_file, std::ios::in);
 	if (!src_fstream) {
-		LOG(ERROR) << "Invalid file: " << src_file;
-		LOG(ERROR) << "Make sure it exists and you have read"
-			<< " permissions.";
+		LOG::ss << "Invalid file: " << src_file;
+		LOG(LOG_LEVEL::ERROR);
+		LOG::ss << "Make sure it exists and you have read permissions.";
+		LOG(LOG_LEVEL::ERROR);
 		return false;
 	}
 	makeCTab();
@@ -214,12 +215,14 @@ void Scanner::eatBlockComment() {
 
 void Scanner::reportWarn(const std::string &msg) {
 	warned = true;
-	LOG(WARN) << "Line " << line_number << ":\t" << msg;
+	LOG::ss << "Line " << line_number << ":\t" << msg;
+	LOG(LOG_LEVEL::WARN);
 }
 
 void Scanner::reportError(const std::string &msg) {
 	errored = true;
-	LOG(ERROR) << "Line " << line_number << ":\t" << msg;
+	LOG::ss << "Line " << line_number << ":\t" << msg;
+	LOG(LOG_LEVEL::ERROR);
 }
 
 void Scanner::makeCTab() {
