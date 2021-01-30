@@ -201,8 +201,7 @@ void Scanner::eatBlockComment() {
 		if (isBlockComment()) {
 			block_level++;
 			nextChar();
-		}
-		if (isBlockEnd()) {
+		} else if (isBlockEnd()) {
 			block_level--;
 			nextChar();
 		}
