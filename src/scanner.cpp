@@ -26,18 +26,15 @@ bool Scanner::init(std::string &src_file) {
 	return true;
 }
 
-token Scanner::getToken() {
-	struct token t;
+Token* Scanner::getToken() {
+	Token* tok(NULL);
+	std::string v = "";
+	//token_type t;
 	nextChar();
 	while ((curr_ct == C_WHITE) || (isComment())) {
 		if (curr_ct == C_WHITE) eatWhiteSpace();
 		if (isLineComment()) eatLineComment();
 		if (isBlockComment()) eatBlockComment();
-	}
-	if (curr_ct == C_EOF) {
-		t.type	= TOK_EOF;
-		t.val	= "EOF";
-		return t;
 	}
 	switch (curr_ct) {
 		// Alphanumerics (symbols: IDs and RWs)
@@ -49,7 +46,7 @@ token Scanner::getToken() {
 					curr_c += 'a' - 'A';
 					curr_ct = C_LOWER;
 				}
-				t.val += static_cast<char>(curr_c);
+				v += static_cast<char>(curr_c);
 				if (next_ct == C_UPPER || next_ct == C_LOWER
 						|| next_ct == C_DIGIT) {
 					nextChar();
@@ -57,110 +54,103 @@ token Scanner::getToken() {
 					break;
 				}
 			}
-			if (sym_tab.find(t.val) == sym_tab.end()) {
-				t.type = TOK_IDENT;
+			if (sym_tab.find(v) == sym_tab.end()) {
+				tok = new StrToken(TOK_IDENT, v);
 			} else {
-				t.type = sym_tab[t.val];
+				tok = new Token(sym_tab[v]);
 			}
 			break;
 		// Operators (Assignment handles colon)
 		case C_EXPR:
-			t.type = TOK_OP_EXPR;
-			t.val += static_cast<char>(curr_c);
+			v += static_cast<char>(curr_c);
+			tok = new StrToken(TOK_OP_EXPR, v);
 			break;
 		case C_ARITH:
-			t.type = TOK_OP_ARITH;
-			t.val += static_cast<char>(curr_c);
+			v += static_cast<char>(curr_c);
+			tok = new StrToken(TOK_OP_ARITH, v);
 			break;
 		case C_RELAT:
-			t.type = TOK_OP_RELAT;
-			t.val += static_cast<char>(curr_c);
+			v += static_cast<char>(curr_c);
 			if (next_c == '=') {
 				nextChar();
-				t.val += static_cast<char>(curr_c);
+				v += static_cast<char>(curr_c);
 			}
+			tok = new StrToken(TOK_OP_RELAT, v);
 			break;
 		case C_COLON:
-			t.val += static_cast<char>(curr_c);
+			v += static_cast<char>(curr_c);
 			if (next_c == '=') {
 				nextChar();
-				t.val += static_cast<char>(curr_c);
-				t.type = TOK_OP_ASS;
+				v += static_cast<char>(curr_c);
+				tok = new StrToken(TOK_OP_ASS, v);
 			} else {
-				t.type = TOK_COLON;
+				tok = new Token(TOK_COLON);
 			}
 			break;
 		case C_TERM:
-			t.type = TOK_OP_TERM;
-			t.val += static_cast<char>(curr_c);
+			v += static_cast<char>(curr_c);
+			tok = new StrToken(TOK_OP_TERM, v);
 			break;
 		// Numerical constant
 		case C_DIGIT:
-			t.type = TOK_NUM;
-			t.val += curr_c;
+			v += curr_c;
 			while (next_ct == C_DIGIT || next_ct == C_UNDER
 					|| next_ct == C_PERIOD){
 				nextChar();
-				t.val += curr_c;
+				v += curr_c;
 			}
+			tok = new FltToken(TOK_NUM, v);
 			break;
 		// String literal
 		case C_QUOTE:
-			t.type	= TOK_STR;
 			do {
-				t.val += static_cast<char>(curr_c);
+				v += static_cast<char>(curr_c);
 				nextChar();
 			} while ((curr_ct != C_QUOTE) && (curr_ct != C_EOF));
 			if (curr_ct == C_EOF) {
-				t.val += '"';
+				v += '"';
 				reportWarn("EOF before string termination.");
 			}
+			tok = new StrToken(TOK_STR, v);
 			break;
 		// Punctuation
 		case C_PERIOD:
-			t.type = TOK_PERIOD;
-			t.val += ".";
+			tok = new Token(TOK_PERIOD);
 			break;
 		case C_COMMA:
-			t.type = TOK_COMMA;
-			t.val += ",";
+			tok = new Token(TOK_COMMA);
 			break;
 		case C_SEMICOL:
-			t.type = TOK_SEMICOL;
-			t.val += ";";
+			tok = new Token(TOK_SEMICOL);
 			break;
 		// TOK_COLON is handled by TOK_OP_ASS since it starts with C_COLON
 		case C_LPAREN:
-			t.type = TOK_LPAREN;
-			t.val += "(";
+			tok = new Token(TOK_LPAREN);
 			break;
 		case C_RPAREN:
-			t.type = TOK_RPAREN;
-			t.val += ")";
+			tok = new Token(TOK_RPAREN);
 			break;
 		case C_LBRACK:
-			t.type = TOK_LBRACK;
-			t.val += "[";
+			tok = new Token(TOK_LBRACK);
 			break;
 		case C_RBRACK:
-			t.type = TOK_RBRACK;
-			t.val += "]";
+			tok = new Token(TOK_RBRACK);
 			break;
 		case C_LBRACE:
-			t.type = TOK_LBRACE;
-			t.val += "{";
+			tok = new Token(TOK_LBRACE);
 			break;
 		case C_RBRACE:
-			t.type = TOK_RBRACE;
-			t.val += "}";
+			tok = new Token(TOK_RBRACE);
+			break;
+		case C_EOF:
+			tok = new Token(TOK_EOF);
 			break;
 		default:
 			reportError("Invalid character/token encountered");
-			t.type = TOK_INVALID;
-			t.val += static_cast<char>(curr_c);
+			tok = new Token();
 			break;
 	}
-	return t;
+	return tok;
 }
 
 void Scanner::nextChar() {

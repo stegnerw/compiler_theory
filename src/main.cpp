@@ -3,6 +3,7 @@
 #include <iostream>
 #include <fstream>
 #include "log.h"
+#include "token.h"
 #include "scanner.h"
 
 bool parse_args(int argc, char* argv[], std::string &src_file);
@@ -16,11 +17,16 @@ int main(int argc, char* argv[]) {
 	LOG(DEBUG) << "Begin scanning file: " << src_file;
 	Scanner scanner;
 	if (!scanner.init(src_file)) return 1;
-	token t;
-	do {
+	Token* t(NULL);
+	bool scanning = true;
+	while (scanning) {
 		t = scanner.getToken();
-		LOG(DEBUG) << "New token:\t" << t.getStr();
-	}while (t.type != TOK_EOF);
+		LOG(DEBUG) << "New token:\t" << t->getStr();
+		//if (t->getType() == TOK_IDENT) LOG(INFO) << t->val;
+		if (t->getType() == TOK_EOF) scanning = false;
+		delete t;
+		t = NULL;
+	}
 	return 0;
 }
 
