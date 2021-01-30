@@ -21,8 +21,8 @@ CC 		= g++
 CFLAGS 	= -g -Wall
 
 TARGET	= $(BINDIR)/$(PROJECT)
-CPP_SRC	= $(addprefix $(SRCDIR)/, log.cpp main.cpp scanner.cpp)
-H_SRC	= $(addprefix $(SRCDIR)/, scanner.h log.h)
+CPP_SRC	= $(addprefix $(SRCDIR)/, log.cpp main.cpp scanner.cpp token.cpp)
+H_SRC	= $(addprefix $(SRCDIR)/, scanner.h log.h token.h)
 DIRS	= $(BINDIR) $(LOGDIR)
 
 # Build Targets
