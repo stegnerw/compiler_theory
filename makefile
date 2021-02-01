@@ -17,11 +17,11 @@ TEST_DIR	= ./test
 LOG_DIR		= ./log
 
 # Tell Make which shell to use
-SHELL 	= bash
+SHELL 		= bash
 
 # Compiler Info
-CC 		= g++
-CFLAGS 	= -g -Wall
+CC 			= g++
+CFLAGS 		= -g -Wall
 
 TARGET		= $(BIN_DIR)/$(PROJECT)
 SRC_FILES	= $(wildcard $(SRC_DIR)/*.cpp)
@@ -39,14 +39,8 @@ $(TARGET): $(OBJ_FILES) | $(BIN_DIR)
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-$(BIN_DIR):
-	mkdir $@
-
-$(OBJ_DIR):
-	mkdir $@
-
-$(LOG_DIR):
-	mkdir $@
+$(BIN_DIR) $(OBJ_DIR) $(LOG_DIR):
+	mkdir -p $@
 
 clean:
 	rm -rf $(BIN_DIR) $(OBJ_DIR) $(LOG_DIR)
