@@ -6,13 +6,15 @@ PROJECT = compiler
 
 # Directory Definitions
 # src/	- Source code directory
-# bin/	- Executables are built here
-# obj/	- Intermediate object files are built here
-SRCDIR	= ./src
-OBJDIR	= ./obj
-BINDIR	= ./bin
-TESTDIR	= ./test
-LOGDIR	= ./log
+# obj/	- Compiled object directory
+# bin/	- Compiled executable directory
+# test/	- Test case directory
+# log/	- Test log directory
+SRC_DIR		= ./src
+OBJ_DIR		= ./obj
+BIN_DIR		= ./bin
+TEST_DIR	= ./test
+LOG_DIR		= ./log
 
 # Tell Make which shell to use
 SHELL 	= bash
@@ -21,40 +23,36 @@ SHELL 	= bash
 CC 		= g++
 CFLAGS 	= -g -Wall
 
-TARGET	= $(BINDIR)/$(PROJECT)
-CPP_SRC	= $(addprefix $(SRCDIR)/, log.cpp main.cpp scanner.cpp token.cpp)
-H_SRC	= $(addprefix $(SRCDIR)/, scanner.h log.h token.h)
-OBJS	= $(addprefix $(OBJDIR)/, log.o main.o scanner.o token.o)
-DIRS	= $(BINDIR) $(LOGDIR) $(OBJDIR)
+TARGET		= $(BIN_DIR)/$(PROJECT)
+SRC_FILES	= $(wildcard $(SRC_DIR)/*.cpp)
+HDR_FILES	= $(wildcard $(SRC_DIR)/*.h)
+OBJ_FILES	= $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRC_FILES))
 
 # Build Targets
 .PHONY: clean
 
-all: $(DIRS) $(TARGET)
+all: $(TARGET)
 
-$(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS)
+$(TARGET): $(OBJ_FILES) | $(BIN_DIR)
+	$(CC) $(CFLAGS) -o $@ $^
 
-obj/log.o:
-	$(CC) $(CFLAGS) -c -o obj/log.o src/log.cpp
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | $(OBJ_DIR)
+	$(CC) $(CFLAGS) -c -o $@ $<
 
-obj/main.o:
-	$(CC) $(CFLAGS) -c -o obj/main.o src/main.cpp
+$(BIN_DIR):
+	mkdir $@
 
-obj/token.o:
-	$(CC) $(CFLAGS) -c -o obj/token.o src/token.cpp
+$(OBJ_DIR):
+	mkdir $@
 
-obj/scanner.o:
-	$(CC) $(CFLAGS) -c -o obj/scanner.o src/scanner.cpp
-
-$(DIRS):
-	mkdir -p $@
+$(LOG_DIR):
+	mkdir $@
 
 clean:
-	rm -rf $(DIRS)
+	rm -rf $(BIN_DIR) $(OBJ_DIR) $(LOG_DIR)
 
 # Use pattern rule from the big makefile example Tyler gave me
 # Something like:
-# $(LOGDIR)/correct/%.log: $(TESTDIR)/correct/%.src $(TARGET)
+# $(LOG_DIR)/correct/%.log: $(TEST_DIR)/correct/%.src $(TARGET)
 # 	Call $(TARGET) on the stuff and things
 
