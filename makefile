@@ -63,8 +63,8 @@ clean:
 test: $(C_LOG_FILES) $(I_LOG_FILES)
 
 $(C_LOG_DIR)/%.log: $(C_TST_DIR)/%.src | $(C_LOG_DIR)
-	$(TARGET) -v 2 -l $@ -i $<
+	$(TARGET) -w -v 2 -l $@ -i $<
 
 $(I_LOG_DIR)/%.log: $(I_TST_DIR)/%.src | $(I_LOG_DIR)
-	$(TARGET) -v 2 -l $@ -i $<
+	$(TARGET) -w -v 2 -l $@ -i $<
 

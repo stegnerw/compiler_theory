@@ -215,13 +215,17 @@ void Scanner::eatBlockComment() {
 
 void Scanner::reportWarn(const std::string &msg) {
 	warned = true;
-	LOG::ss << "Line " << line_number << ":\t" << msg;
+	LOG::ss << "Line " << line_number << ":";
+	if (line_number < 10) LOG::ss << ' ';
+	LOG::ss << "\t" << msg;
 	LOG(LOG_LEVEL::WARN);
 }
 
 void Scanner::reportError(const std::string &msg) {
 	errored = true;
-	LOG::ss << "Line " << line_number << ":\t" << msg;
+	LOG::ss << "Line " << line_number << ":";
+	if (line_number < 10) LOG::ss << ' ';
+	LOG::ss << "\t" << msg;
 	LOG(LOG_LEVEL::ERROR);
 }
 

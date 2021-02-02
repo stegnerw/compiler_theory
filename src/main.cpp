@@ -7,14 +7,15 @@
 #include "scanner.h"
 
 bool parse_args(int argc, char* argv[], std::string &src_file,
-		std::string &log_file);
+		std::string &log_file, bool &show_welcome);
 void show_usage(std::string prog_name);
 void welcome_msg();
 
 int main(int argc, char* argv[]) {
-	welcome_msg();
 	std::string src_file, log_file;
-	if (!parse_args(argc, argv, src_file, log_file)) return 1;
+	bool show_welcome = true;
+	if (!parse_args(argc, argv, src_file, log_file, show_welcome)) return 1;
+	if (show_welcome) welcome_msg();
 	LOG::ss << "Begin scanning file: " << src_file;
 	LOG(LOG_LEVEL::DEBUG);
 	Scanner scanner;
@@ -33,10 +34,10 @@ int main(int argc, char* argv[]) {
 }
 
 bool parse_args(int argc, char* argv[], std::string &src_file,
-		std::string &log_file) {
+		std::string &log_file, bool &show_welcome) {
 	int opt;
 	bool error = false;
-	while ((opt = getopt(argc, argv, "hv:i:l:")) != -1) {
+	while ((opt = getopt(argc, argv, "hv:i:l:w")) != -1) {
 		switch (opt) {
 			case 'h':
 				error = true;
@@ -61,6 +62,9 @@ bool parse_args(int argc, char* argv[], std::string &src_file,
 					error = true;
 				}
 				log_file = optarg;
+				break;
+			case 'w':
+				show_welcome = false;
 				break;
 			case '?':
 				LOG::ss << "Invalid flag: " << static_cast<char>(optopt);
@@ -87,6 +91,8 @@ void show_usage(std::string prog_name) {
 				<< "\t\t\t1 - INFO\n"
 				<< "\t\t\t2 - WARNING\n"
 				<< "\t\t\t3 - ERROR\n"
+				<< "\t-w\t\tDo not show welcome Tux.\n"
+				<< "\t\t\tThis will make Tux sad. :(\n"
 				<< std::endl;
 }
 
