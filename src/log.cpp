@@ -9,9 +9,11 @@ std::stringstream LOG::ss;
 
 LOG::LOG(LOG_LEVEL type) : msg_level(type) {
 	if (!ss.str().empty()) {
-		std::cout << colors[type] << labels[type] << ss.str() << COL_RST
-			<< std::endl;
-		log_fstream.open(log_file, std::ios::app);
+		if (msg_level >= min_level) {
+			std::cout << colors[type] << labels[type] << ss.str() << COL_RST
+				<< std::endl;
+			log_fstream.open(log_file, std::ios::app);
+		}
 		if (log_fstream) {
 			log_fstream << labels[type] << ss.str() << std::endl;
 			log_fstream.close();
