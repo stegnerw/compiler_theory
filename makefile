@@ -60,7 +60,7 @@ clean:
 # Something like:
 # $(LOG_DIR)/correct/%.log: $(TST_DIR)/correct/%.src $(TARGET)
 # 	Call $(TARGET) on the stuff and things
-test: $(TARGET) $(C_LOG_FILES) $(I_LOG_FILES)
+test: $(C_LOG_FILES) $(I_LOG_FILES)
 
 $(C_LOG_DIR)/%.log: $(C_TST_DIR)/%.src | $(C_LOG_DIR)
 	$(TARGET) -v 2 -l $@ -i $<
