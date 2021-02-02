@@ -49,7 +49,7 @@ Token* Scanner::getToken() {
 				}
 				v += static_cast<char>(curr_c);
 				if (next_ct == C_UPPER || next_ct == C_LOWER
-						|| next_ct == C_DIGIT) {
+						|| next_ct == C_DIGIT || next_ct == C_UNDER) {
 					nextChar();
 				} else {
 					break;
