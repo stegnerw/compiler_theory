@@ -147,7 +147,11 @@ Token* Scanner::getToken() {
 			tok = new Token(TOK_EOF);
 			break;
 		default:
-			reportError("Invalid character/token encountered");
+			std::stringstream ss;
+			ss	<< "Invalid character/token encountered: "
+				<< static_cast<char>(curr_c)
+				<< ".\tTreating as whitespace.";
+			reportWarn(ss.str());
 			tok = new Token();
 			break;
 	}
@@ -209,7 +213,7 @@ void Scanner::eatBlockComment() {
 		nextChar();
 	} while ((block_level > 0) && (curr_ct != C_EOF));
 	if (curr_ct == C_EOF) {
-		reportWarn("EOF before block comment termination.");
+		reportWarn("EOF before block comment termination. Assuming closed.");
 	}
 }
 

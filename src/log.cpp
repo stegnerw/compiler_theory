@@ -12,8 +12,8 @@ LOG::LOG(LOG_LEVEL type) : msg_level(type) {
 		if (msg_level >= min_level) {
 			std::cout << colors[type] << labels[type] << ss.str() << COL_RST
 				<< std::endl;
-			log_fstream.open(log_file, std::ios::app);
 		}
+		log_fstream.open(log_file, std::ios::app);
 		if (log_fstream) {
 			log_fstream << labels[type] << ss.str() << std::endl;
 			log_fstream.close();
@@ -24,7 +24,7 @@ LOG::LOG(LOG_LEVEL type) : msg_level(type) {
 
 bool LOG::setLogFile(std::string f) {
 	// Try opening the file
-	log_fstream.open(f, std::ios::app);
+	log_fstream.open(f, std::ios::out);
 	if (log_fstream) {
 		log_file = f;
 		log_fstream.close();

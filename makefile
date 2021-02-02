@@ -62,9 +62,9 @@ clean:
 # 	Call $(TARGET) on the stuff and things
 test: $(C_LOG_FILES) $(I_LOG_FILES)
 
-$(C_LOG_DIR)/%.log: $(C_TST_DIR)/%.src | $(C_LOG_DIR)
+$(C_LOG_DIR)/%.log: $(C_TST_DIR)/%.src $(TARGET) | $(C_LOG_DIR)
 	$(TARGET) -w -v 2 -l $@ -i $<
 
-$(I_LOG_DIR)/%.log: $(I_TST_DIR)/%.src | $(I_LOG_DIR)
+$(I_LOG_DIR)/%.log: $(I_TST_DIR)/%.src $(TARGET) | $(I_LOG_DIR)
 	$(TARGET) -w -v 2 -l $@ -i $<
 
