@@ -1,6 +1,7 @@
 # Custom
 bin/
 log/
+lecture_slides/
 
 # Prerequisites
 *.d
