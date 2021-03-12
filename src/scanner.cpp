@@ -7,7 +7,9 @@
 Scanner::Scanner() : warned(false), errored(false), line_number(1) {}
 
 Scanner::~Scanner() {
-	if (src_fstream) src_fstream.close();
+	if (src_fstream) {
+		src_fstream.close();
+	}
 }
 
 bool Scanner::init(std::string &src_file) {
@@ -22,8 +24,9 @@ bool Scanner::init(std::string &src_file) {
 		LOG(LOG_LEVEL::ERROR);
 		return false;
 	}
-	makeCTab();
 	makeSymTab();
+	LOG::ss << "Init Scanner success.";
+	LOG(LOG_LEVEL::DEBUG);
 	return true;
 }
 
@@ -162,9 +165,9 @@ void Scanner::nextChar() {
 	if (src_fstream) {
 		if (curr_c == '\n') line_number++;
 		curr_c = src_fstream.get();
-		curr_ct = curr_c < 0 ? C_EOF : c_type_tab[curr_c];
+		curr_ct = curr_c < 0 ? C_EOF : char_table.getCharType(curr_c);
 		next_c = src_fstream.peek();
-		next_ct = next_c < 0 ? C_EOF : c_type_tab[next_c];
+		next_ct = next_c < 0 ? C_EOF : char_table.getCharType(next_c);
 	} else {
 		reportError("Could not read character from file.");
 	}
@@ -231,66 +234,6 @@ void Scanner::reportError(const std::string &msg) {
 	if (line_number < 10) LOG::ss << ' ';
 	LOG::ss << "\t" << msg;
 	LOG(LOG_LEVEL::ERROR);
-}
-
-void Scanner::makeCTab() {
-	for (int i = 0; i < 128; i++) {
-		switch (i) {
-			case '.':
-				c_type_tab[i] = C_PERIOD; break;
-			case '_':
-				c_type_tab[i] = C_UNDER; break;
-			case ';':
-				c_type_tab[i] = C_SEMICOL; break;
-			case ':':
-				c_type_tab[i] = C_COLON; break;
-			case ',':
-				c_type_tab[i] = C_COMMA; break;
-			case '(':
-				c_type_tab[i] = C_LPAREN; break;
-			case ')':
-				c_type_tab[i] = C_RPAREN; break;
-			case '[':
-				c_type_tab[i] = C_LBRACK; break;
-			case ']':
-				c_type_tab[i] = C_RBRACK; break;
-			case '{':
-				c_type_tab[i] = C_LBRACE; break;
-			case '}':
-				c_type_tab[i] = C_RBRACE; break;
-			case '&':
-			case '|':
-				c_type_tab[i] = C_EXPR; break;
-			case '<':
-			case '>':
-			case '=':
-			case '!':
-				c_type_tab[i] = C_RELAT; break;
-			case '+':
-			case '-':
-				c_type_tab[i] = C_ARITH; break;
-			case '/':
-			case '*':
-				c_type_tab[i] = C_TERM; break;
-			case '"':
-				c_type_tab[i] = C_QUOTE; break;
-			case ' ':
-			case '\t':
-			case '\r':
-			case '\n':
-				c_type_tab[i] = C_WHITE; break;
-			default:
-				if (i >= 'a' && i <= 'z') {
-					c_type_tab[i] = C_LOWER;
-				} else if (i >= 'A' && i <= 'Z') {
-					c_type_tab[i] = C_UPPER;
-				}else if (i >= '0' && i <= '9') {
-					c_type_tab[i] = C_DIGIT;
-				} else {
-					c_type_tab[i] = C_INVALID;
-				}
-		}
-	}
 }
 
 void Scanner::makeSymTab() {
