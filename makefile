@@ -21,11 +21,11 @@ C_LOG_DIR	= $(LOG_DIR)/correct
 I_LOG_DIR	= $(LOG_DIR)/incorrect
 
 # Tell Make which shell to use
-SHELL 		= bash
+SHELL		= bash
 
 # Compiler Info
-CC 			= g++
-CFLAGS 		= -g -Wall
+CC			= g++
+CFLAGS		= -g -Wall
 
 TARGET		= $(BIN_DIR)/$(PROJECT)
 SRC_FILES	= $(wildcard $(SRC_DIR)/*.cpp)
@@ -33,10 +33,10 @@ HDR_FILES	= $(wildcard $(SRC_DIR)/*.h)
 OBJ_FILES	= $(patsubst $(SRC_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(SRC_FILES))
 # Correct tests/logs
 C_TST_FILES	= $(wildcard $(C_TST_DIR)/*.src)
-C_LOG_FILES = $(patsubst $(C_TST_DIR)/%.src, $(C_LOG_DIR)/%.log, $(C_TST_FILES))
+C_LOG_FILES	= $(patsubst $(C_TST_DIR)/%.src, $(C_LOG_DIR)/%.log, $(C_TST_FILES))
 # Incorrect tests
 I_TST_FILES	= $(wildcard $(I_TST_DIR)/*.src)
-I_LOG_FILES = $(patsubst $(I_TST_DIR)/%.src, $(I_LOG_DIR)/%.log, $(I_TST_FILES))
+I_LOG_FILES	= $(patsubst $(I_TST_DIR)/%.src, $(I_LOG_DIR)/%.log, $(I_TST_FILES))
 
 # Build Targets
 .PHONY: clean
@@ -67,4 +67,3 @@ $(C_LOG_DIR)/%.log: $(C_TST_DIR)/%.src $(TARGET) | $(C_LOG_DIR)
 
 $(I_LOG_DIR)/%.log: $(I_TST_DIR)/%.src $(TARGET) | $(I_LOG_DIR)
 	$(TARGET) -w -v 2 -l $@ -i $<
-
