@@ -22,7 +22,7 @@ class Scanner {
 		CharType curr_ct;
 		int next_c;
 		CharType next_ct;
-		std::unordered_map<std::string, token_type> sym_tab;
+		std::unordered_map<std::string, TokenType> sym_tab;
 		std::ifstream src_fstream;
 		void nextChar();
 		bool isComment();

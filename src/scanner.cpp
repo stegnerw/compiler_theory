@@ -33,7 +33,7 @@ bool Scanner::init(std::string &src_file) {
 Token* Scanner::getToken() {
 	Token* tok(NULL);
 	std::string v = "";
-	//token_type t;
+	//TokenType t;
 	nextChar();
 	while ((curr_ct == C_WHITE) || (isComment())) {
 		if (curr_ct == C_WHITE) eatWhiteSpace();
@@ -101,7 +101,10 @@ Token* Scanner::getToken() {
 			while (next_ct == C_DIGIT || next_ct == C_UNDER
 					|| next_ct == C_PERIOD){
 				nextChar();
-				v += curr_c;
+				// Skip underscores
+				if (curr_ct != C_UNDER) {
+					v += curr_c;
+				}
 			}
 			tok = new FltToken(TOK_NUM, v);
 			break;
@@ -244,12 +247,10 @@ void Scanner::makeSymTab() {
 	sym_tab["global"]		= TOK_RW_GLOB;
 	sym_tab["procedure"]	= TOK_RW_PROC;
 	sym_tab["variable"]		= TOK_RW_VAR;
-	sym_tab["type"]			= TOK_RW_TYPE;
 	sym_tab["integer"]		= TOK_RW_INT;
 	sym_tab["float"]		= TOK_RW_FLT;
 	sym_tab["string"]		= TOK_RW_STR;
 	sym_tab["bool"]			= TOK_RW_BOOL;
-	sym_tab["enum"]			= TOK_RW_ENUM;
 	sym_tab["if"]			= TOK_RW_IF;
 	sym_tab["then"]			= TOK_RW_THEN;
 	sym_tab["else"]			= TOK_RW_ELSE;

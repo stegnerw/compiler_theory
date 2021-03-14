@@ -7,9 +7,9 @@
 
 Token::Token() : type(TOK_INVALID) {}
 
-Token::Token(const token_type &t) : type(t) {}
+Token::Token(const TokenType &t) : type(t) {}
 
-token_type const Token::getType() {
+TokenType const Token::getType() {
 	return type;
 }
 
@@ -23,7 +23,7 @@ std::string const Token::getStr() {
 // StrToken
 ////////////////////////////////////////////////////////////////////////////////
 
-StrToken::StrToken(const token_type &t, const std::string &v) : val(v) {
+StrToken::StrToken(const TokenType &t, const std::string &v) : val(v) {
 	type = t;
 }
 
@@ -41,7 +41,7 @@ std::string const StrToken::getStr() {
 // IntToken
 ////////////////////////////////////////////////////////////////////////////////
 
-IntToken::IntToken(const token_type &t, const std::string &v) {
+IntToken::IntToken(const TokenType &t, const std::string &v) {
 	type = t;
 	val = std::stoi(v);
 }
@@ -60,7 +60,7 @@ std::string const IntToken::getStr() {
 // FltToken
 ////////////////////////////////////////////////////////////////////////////////
 
-FltToken::FltToken(const token_type &t, const std::string &v) {
+FltToken::FltToken(const TokenType &t, const std::string &v) {
 	type = t;
 	val = std::stod(v);
 }
@@ -79,7 +79,7 @@ std::string const FltToken::getStr() {
 // type_names
 ////////////////////////////////////////////////////////////////////////////////
 
-const std::string Token::type_names[41] = {
+const std::string Token::type_names[NUM_TOK_ENUMS] = {
 	"INVALID",
 	"PROGRAM",
 	"IS",
@@ -88,12 +88,10 @@ const std::string Token::type_names[41] = {
 	"GLOBAL",
 	"PROCEDURE",
 	"VARIABLE",
-	"TYPE",
 	"INTEGER",
 	"FLOAT",
 	"STRING",
 	"BOOL",
-	"ENUM",
 	"IF",
 	"THEN",
 	"ELSE",
