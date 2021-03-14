@@ -57,44 +57,45 @@ enum token_type {
 };
 
 class Token {
-	public:
-		Token();
-		Token(const token_type &t);
-		virtual std::string const getStr();
-		token_type const getType();
-	protected:
-		static const std::string type_names[41];
-		token_type type;
+public:
+	Token();
+	virtual ~Token() {};
+	Token(const token_type &t);
+	virtual std::string const getStr();
+	token_type const getType();
+protected:
+	static const std::string type_names[41];
+	token_type type;
 };
 
 // TOK_IDs, TOK_OPs, and TOK_STRs (for now)
 class StrToken : public Token {
-	public:
-		StrToken(const token_type &t, const std::string &v);
-		std::string const getVal();
-		std::string const getStr();
-	protected:
-		std::string val;
+public:
+	StrToken(const token_type &t, const std::string &v);
+	std::string const getVal();
+	std::string const getStr();
+protected:
+	std::string val;
 };
 
 // TOK_INT
 class IntToken : public Token {
-	public:
-		IntToken(const token_type &t, const std::string &v);
-		int const getVal();
-		std::string const getStr();
-	protected:
-		int val;
+public:
+	IntToken(const token_type &t, const std::string &v);
+	int const getVal();
+	std::string const getStr();
+protected:
+	int val;
 };
 
 // TOK_FLT
 class FltToken : public Token {
-	public:
-		FltToken(const token_type &t, const std::string &v);
-		double const getVal();
-		std::string const getStr();
-	protected:
-		double val;
+public:
+	FltToken(const token_type &t, const std::string &v);
+	double const getVal();
+	std::string const getStr();
+protected:
+	double val;
 };
 
 #endif // TOKEN_H
