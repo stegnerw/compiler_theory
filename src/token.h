@@ -1,100 +1,144 @@
 #ifndef TOKEN_H
 #define TOKEN_H
 
+////////////////////////////////////////////////////////////////////////////////
+// Note: This file contains inlined class definitions and class templates.
+// All of the classes are inlined where appropriate for consistency.
+////////////////////////////////////////////////////////////////////////////////
+
 #include <sstream>
 
-/*
- * Token Types (from page 112):
- * Each keyword gets its own token type
- * Each operator class gets its own token type
- * One token type represents all identifiers
- * One token type for numerical constants (ints and floats)
- * One token type for string literals
- * Each punctuation gets its own token type
- */
 enum TokenType {
-	TOK_INVALID,	// Invalid token - the default
-	TOK_RW_PROG,	// program
-	TOK_RW_IS,		// is
-	TOK_RW_BEG,		// begin
-	TOK_RW_END,		// end
-	TOK_RW_GLOB,	// global
-	TOK_RW_PROC,	// procedure
-	TOK_RW_VAR,		// variable
-	TOK_RW_INT,		// integer
-	TOK_RW_FLT,		// float
-	TOK_RW_STR,		// string
-	TOK_RW_BOOL,	// bool
-	TOK_RW_IF,		// if
-	TOK_RW_THEN,	// then
-	TOK_RW_ELSE,	// else
-	TOK_RW_FOR,		// for
-	TOK_RW_RET,		// return
-	TOK_RW_NOT,		// not
-	TOK_RW_TRUE,	// true
-	TOK_RW_FALSE,	// false
-	TOK_OP_EXPR,	// & |
-	TOK_OP_ARITH,	// + -
-	TOK_OP_RELAT,	// < <= > >= == !=
-	TOK_OP_ASS,		// :=
-	TOK_OP_TERM,	// * /
-	TOK_IDENT,		// Identifiers
-	TOK_NUM,		// Numbers (float and int)
-	TOK_STR,		// String literals: "[^"]"
-	TOK_PERIOD,		// .
-	TOK_COMMA,		// ,
-	TOK_SEMICOL,	// ;
-	TOK_COLON,		// :
-	TOK_LPAREN,		// (
-	TOK_RPAREN,		// )
-	TOK_LBRACK,		// [
-	TOK_RBRACK,		// ]
-	TOK_LBRACE,		// {
-	TOK_RBRACE,		// }
-	TOK_EOF,		// End of file
-	NUM_TOK_ENUMS	// Number of token enums (for array size)
+	TOK_INVALID = 0,	// Invalid token - the default
+	TOK_RW_PROG,		// program
+	TOK_RW_IS,			// is
+	TOK_RW_BEG,			// begin
+	TOK_RW_END,			// end
+	TOK_RW_GLOB,		// global
+	TOK_RW_PROC,		// procedure
+	TOK_RW_VAR,			// variable
+	TOK_RW_INT,			// integer
+	TOK_RW_FLT,			// float
+	TOK_RW_STR,			// string
+	TOK_RW_BOOL,		// bool
+	TOK_RW_IF,			// if
+	TOK_RW_THEN,		// then
+	TOK_RW_ELSE,		// else
+	TOK_RW_FOR,			// for
+	TOK_RW_RET,			// return
+	TOK_RW_NOT,			// not
+	TOK_RW_TRUE,		// true
+	TOK_RW_FALSE,		// false
+	TOK_OP_EXPR,		// & |
+	TOK_OP_ARITH,		// + -
+	TOK_OP_RELAT,		// < <= > >= == !=
+	TOK_OP_ASS,			// :=
+	TOK_OP_TERM,		// * /
+	TOK_IDENT,			// Identifiers
+	TOK_NUM,			// Numbers (float and int)
+	TOK_STR,			// String literals: "[^"]"
+	TOK_PERIOD,			// .
+	TOK_COMMA,			// ,
+	TOK_SEMICOL,		// ;
+	TOK_COLON,			// :
+	TOK_LPAREN,			// (
+	TOK_RPAREN,			// )
+	TOK_LBRACK,			// [
+	TOK_RBRACK,			// ]
+	TOK_LBRACE,			// {
+	TOK_RBRACE,			// }
+	TOK_EOF,			// End of file
+	NUM_TOK_ENUMS		// Number of token enums (for array size)
 };
 
+enum TypeMark {
+	TYPE_NONE = 0,
+	TYPE_INT,
+	TYPE_FLT,
+	TYPE_STR,
+	TYPE_BOOL,
+	TYPE_PROC,
+	NUM_TYPE_ENUMS
+};
+
+////////////////////////////////////////////////////////////////////////////////
+// Base token class
+// Reserve words, invalid, and punctuation
+////////////////////////////////////////////////////////////////////////////////
 class Token {
 public:
-	Token();
-	Token(const TokenType &t);
-	virtual ~Token() {};
-	virtual std::string const getStr();
-	TokenType const getType();
+	Token() : type(TOK_INVALID) {}
+	Token(const TokenType& t) : type(t) {}
+	virtual ~Token() {}
+	virtual std::string const getStr() {
+		std::stringstream ss;
+		ss << "< " << token_names[type] << " >";
+		return ss.str();
+	}
+	TokenType const getType() { return type; }
 protected:
-	static const std::string type_names[NUM_TOK_ENUMS];
+	static const std::string token_names[NUM_TOK_ENUMS];
 	TokenType type;
 };
 
-// TOK_IDs, TOK_OPs, and TOK_STRs (for now)
-class StrToken : public Token {
+////////////////////////////////////////////////////////////////////////////////
+// Operator token class
+////////////////////////////////////////////////////////////////////////////////
+class OpToken : public Token {
 public:
-	StrToken(const TokenType &t, const std::string &v);
-	std::string const getVal();
-	std::string const getStr();
-protected:
+	OpToken(const TokenType& t, const std::string& v) : val(v) { type = t; }
+	std::string getVal() { return val; }
+	std::string const getStr() {
+		std::stringstream ss;
+		ss << "< " << token_names[type] << ", " << val << " >";
+		return ss.str();
+	}
+private:
 	std::string val;
 };
 
-// TOK_INT
-class IntToken : public Token {
+////////////////////////////////////////////////////////////////////////////////
+// Identifier token class
+// Variables and procedures
+////////////////////////////////////////////////////////////////////////////////
+class IdToken : public Token {
 public:
-	IntToken(const TokenType &t, const std::string &v);
-	int const getVal();
-	std::string const getStr();
+	IdToken(const TokenType& t, const std::string& lex) :
+			lexeme(lex),
+			type_mark(TYPE_NONE) {
+		type = t;
+	}
+	std::string const getStr() {
+		std::stringstream ss;
+		ss << "< " << token_names[type] << ", " << lexeme << ", "
+			<< type_mark_names[type_mark] << " >";
+		return ss.str();
+	}
+	TypeMark getTypeMark() { return type_mark; }
+	void setTypeMark(const TypeMark& tm) { type_mark = tm; }
+	std::string getLexeme() { return lexeme; }
 protected:
-	int val;
+	static const std::string type_mark_names[NUM_TYPE_ENUMS];
+	std::string lexeme;
+	TypeMark type_mark;
 };
 
-// TOK_FLT
-class FltToken : public Token {
+////////////////////////////////////////////////////////////////////////////////
+// Literal token classes
+// Int, float, string, and bool
+////////////////////////////////////////////////////////////////////////////////
+template <class T>
+class LiteralToken : public Token {
 public:
-	FltToken(const TokenType &t, const std::string &v);
-	double const getVal();
-	std::string const getStr();
-protected:
-	double val;
+	LiteralToken<T>(const TokenType& t, const T& v) : val(v) { type = t; }
+	T const getVal() { return val; }
+	std::string const getStr() {
+		std::stringstream ss;
+		ss << "< " << token_names[type] << ", " << val << " >";
+		return ss.str();
+	}
+private:
+	T val;
 };
 
 #endif // TOKEN_H

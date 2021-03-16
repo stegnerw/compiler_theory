@@ -1,10 +1,18 @@
 #include "scanner.h"
+
 #include <string>
 #include <fstream>
 #include <unordered_map>
+
+#include "token.h"
+#include "char_table.h"
 #include "log.h"
 
-Scanner::Scanner() : warned(false), errored(false), line_number(1) {}
+////////////////////////////////////////////////////////////////////////////////
+// Public
+////////////////////////////////////////////////////////////////////////////////
+
+Scanner::Scanner() : errored(false), line_number(1) {}
 
 Scanner::~Scanner() {
 	if (src_fstream) {
@@ -13,7 +21,6 @@ Scanner::~Scanner() {
 }
 
 bool Scanner::init(std::string &src_file) {
-	warned = false;
 	errored = false;
 	line_number = 1;
 	src_fstream.open(src_file, std::ios::in);
@@ -22,10 +29,11 @@ bool Scanner::init(std::string &src_file) {
 		LOG(LOG_LEVEL::ERROR);
 		LOG::ss << "Make sure it exists and you have read permissions.";
 		LOG(LOG_LEVEL::ERROR);
+		errored = true;
 		return false;
 	}
 	makeSymTab();
-	LOG::ss << "Init Scanner success.";
+	LOG::ss << "Scanner initialized.";
 	LOG(LOG_LEVEL::DEBUG);
 	return true;
 }
@@ -33,7 +41,6 @@ bool Scanner::init(std::string &src_file) {
 Token* Scanner::getToken() {
 	Token* tok(NULL);
 	std::string v = "";
-	//TokenType t;
 	nextChar();
 	while ((curr_ct == C_WHITE) || (isComment())) {
 		if (curr_ct == C_WHITE) eatWhiteSpace();
@@ -59,7 +66,7 @@ Token* Scanner::getToken() {
 				}
 			}
 			if (sym_tab.find(v) == sym_tab.end()) {
-				tok = new StrToken(TOK_IDENT, v);
+				tok = new IdToken(TOK_IDENT, v);
 			} else {
 				tok = new Token(sym_tab[v]);
 			}
@@ -67,11 +74,11 @@ Token* Scanner::getToken() {
 		// Operators (Assignment handles colon)
 		case C_EXPR:
 			v += static_cast<char>(curr_c);
-			tok = new StrToken(TOK_OP_EXPR, v);
+			tok = new LiteralToken<std::string>(TOK_OP_EXPR, v);
 			break;
 		case C_ARITH:
 			v += static_cast<char>(curr_c);
-			tok = new StrToken(TOK_OP_ARITH, v);
+			tok = new LiteralToken<std::string>(TOK_OP_ARITH, v);
 			break;
 		case C_RELAT:
 			v += static_cast<char>(curr_c);
@@ -79,21 +86,21 @@ Token* Scanner::getToken() {
 				nextChar();
 				v += static_cast<char>(curr_c);
 			}
-			tok = new StrToken(TOK_OP_RELAT, v);
+			tok = new LiteralToken<std::string>(TOK_OP_RELAT, v);
 			break;
 		case C_COLON:
 			v += static_cast<char>(curr_c);
 			if (next_c == '=') {
 				nextChar();
 				v += static_cast<char>(curr_c);
-				tok = new StrToken(TOK_OP_ASS, v);
+				tok = new LiteralToken<std::string>(TOK_OP_ASS, v);
 			} else {
 				tok = new Token(TOK_COLON);
 			}
 			break;
 		case C_TERM:
 			v += static_cast<char>(curr_c);
-			tok = new StrToken(TOK_OP_TERM, v);
+			tok = new LiteralToken<std::string>(TOK_OP_TERM, v);
 			break;
 		// Numerical constant
 		case C_DIGIT:
@@ -106,7 +113,7 @@ Token* Scanner::getToken() {
 					v += curr_c;
 				}
 			}
-			tok = new FltToken(TOK_NUM, v);
+			tok = new LiteralToken<float>(TOK_NUM, std::stof(v));
 			break;
 		// String literal
 		case C_QUOTE:
@@ -116,9 +123,10 @@ Token* Scanner::getToken() {
 			} while ((curr_ct != C_QUOTE) && (curr_ct != C_EOF));
 			if (curr_ct == C_EOF) {
 				v += '"';
-				reportWarn("EOF before string termination.");
+				LOG::ss << "EOF before string termination. Assuming closed.";
+				LOG(LOG_LEVEL::WARN);
 			}
-			tok = new StrToken(TOK_STR, v);
+			tok = new LiteralToken<std::string>(TOK_STR, v);
 			break;
 		// Punctuation
 		case C_PERIOD:
@@ -154,25 +162,38 @@ Token* Scanner::getToken() {
 			break;
 		default:
 			std::stringstream ss;
-			ss	<< "Invalid character/token encountered: "
+			LOG::ss << "Invalid character/token encountered: "
 				<< static_cast<char>(curr_c)
 				<< ".\tTreating as whitespace.";
-			reportWarn(ss.str());
+			LOG(LOG_LEVEL::WARN);
 			tok = new Token();
 			break;
 	}
 	return tok;
 }
 
+bool Scanner::hasErrored() {
+	return errored;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Private
+////////////////////////////////////////////////////////////////////////////////
+
 void Scanner::nextChar() {
 	if (src_fstream) {
-		if (curr_c == '\n') line_number++;
+		if (curr_c == '\n') {
+			line_number++;
+			LOG::line_number = line_number;
+		}
 		curr_c = src_fstream.get();
 		curr_ct = curr_c < 0 ? C_EOF : char_table.getCharType(curr_c);
 		next_c = src_fstream.peek();
 		next_ct = next_c < 0 ? C_EOF : char_table.getCharType(next_c);
 	} else {
-		reportError("Could not read character from file.");
+		LOG::ss << "Could not read character from file.";
+		LOG(LOG_LEVEL::ERROR);
+		errored = true;
 	}
 }
 
@@ -219,24 +240,9 @@ void Scanner::eatBlockComment() {
 		nextChar();
 	} while ((block_level > 0) && (curr_ct != C_EOF));
 	if (curr_ct == C_EOF) {
-		reportWarn("EOF before block comment termination. Assuming closed.");
+		LOG::ss << "EOF before block comment termination. Assuming closed.";
+		LOG(LOG_LEVEL::WARN);
 	}
-}
-
-void Scanner::reportWarn(const std::string &msg) {
-	warned = true;
-	LOG::ss << "Line " << line_number << ":";
-	if (line_number < 10) LOG::ss << ' ';
-	LOG::ss << "\t" << msg;
-	LOG(LOG_LEVEL::WARN);
-}
-
-void Scanner::reportError(const std::string &msg) {
-	errored = true;
-	LOG::ss << "Line " << line_number << ":";
-	if (line_number < 10) LOG::ss << ' ';
-	LOG::ss << "\t" << msg;
-	LOG(LOG_LEVEL::ERROR);
 }
 
 void Scanner::makeSymTab() {

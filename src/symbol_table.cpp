@@ -20,17 +20,13 @@ std::shared_ptr<Token> SymbolTable::lookup(const std::string& key) {
 }
 
 // Environment checks for reserved words
-bool SymbolTable::insert(const std::string& key,
-		const TokenType& tt) {
-	bool exists = false;
-	std::shared_ptr<Token> new_token = lookup(key);
-	if (new_token) {
-		exists = true;
+bool SymbolTable::insert(const std::string& key, std::shared_ptr<Token> t) {
+	bool success = true;
+	if (lookup(key)) {
+		success = false;
 	} else {
-		// TODO: Figure out which token type and initialize
-		new_token = std::shared_ptr<Token>(new StrToken(tt, key));
-		symbol_map[key] = new_token;
+		symbol_map[key] = t;
 	}
-	return exists;
+	return success;
 }
 
