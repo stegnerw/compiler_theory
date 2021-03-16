@@ -2,19 +2,20 @@
 #define SCANNER_H
 
 #include <fstream>
+#include <memory>
 #include <string>
 #include <unordered_map>
 
 #include "char_table.h"
-#include "symbol_table.h"
+#include "environment.h"
 #include "token.h"
 
 class Scanner {
 public:
-	Scanner();
+	Scanner(std::shared_ptr<Environment>);
 	~Scanner();
 	bool init(std::string &src_file);
-	Token* getToken();
+	std::shared_ptr<Token> getToken();
 	bool hasErrored();
 private:
 	bool errored;
@@ -24,7 +25,7 @@ private:
 	CharType curr_ct;
 	int next_c;
 	CharType next_ct;
-	std::unordered_map<std::string, TokenType> sym_tab;
+	std::shared_ptr<Environment> env;
 	std::ifstream src_fstream;
 	void nextChar();
 	bool isComment();
@@ -34,9 +35,6 @@ private:
 	void eatWhiteSpace();
 	void eatLineComment();
 	void eatBlockComment();
-	void reportWarn(const std::string &msg);
-	void reportError(const std::string &msg);
-	void makeSymTab();
 };
 
 #endif // SCANNER_H

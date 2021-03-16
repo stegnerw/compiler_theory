@@ -1,18 +1,23 @@
 #include "scanner.h"
 
-#include <string>
 #include <fstream>
+#include <memory>
+#include <string>
 #include <unordered_map>
 
-#include "token.h"
 #include "char_table.h"
+#include "environment.h"
 #include "log.h"
+#include "token.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 // Public
 ////////////////////////////////////////////////////////////////////////////////
 
-Scanner::Scanner() : errored(false), line_number(1) {}
+Scanner::Scanner(std::shared_ptr<Environment> e) :
+		errored(false),
+		line_number(1),
+		env(e){}
 
 Scanner::~Scanner() {
 	if (src_fstream) {
@@ -32,14 +37,13 @@ bool Scanner::init(std::string &src_file) {
 		errored = true;
 		return false;
 	}
-	makeSymTab();
 	LOG::ss << "Scanner initialized.";
 	LOG(LOG_LEVEL::DEBUG);
 	return true;
 }
 
-Token* Scanner::getToken() {
-	Token* tok(NULL);
+std::shared_ptr<Token> Scanner::getToken() {
+	std::shared_ptr<Token> tok(nullptr);
 	std::string v = "";
 	nextChar();
 	while ((curr_ct == C_WHITE) || (isComment())) {
@@ -65,20 +69,22 @@ Token* Scanner::getToken() {
 					break;
 				}
 			}
-			if (sym_tab.find(v) == sym_tab.end()) {
-				tok = new IdToken(TOK_IDENT, v);
+			if (!env->isReserved(v)) {
+				tok = std::shared_ptr<Token>(new IdToken(TOK_IDENT, v));
 			} else {
-				tok = new Token(sym_tab[v]);
+				tok = env->lookup(v);
 			}
 			break;
 		// Operators (Assignment handles colon)
 		case C_EXPR:
 			v += static_cast<char>(curr_c);
-			tok = new LiteralToken<std::string>(TOK_OP_EXPR, v);
+			tok = std::shared_ptr<Token>(
+				new LiteralToken<std::string>(TOK_OP_EXPR, v));
 			break;
 		case C_ARITH:
 			v += static_cast<char>(curr_c);
-			tok = new LiteralToken<std::string>(TOK_OP_ARITH, v);
+			tok = std::shared_ptr<Token>(
+				new LiteralToken<std::string>(TOK_OP_ARITH, v));
 			break;
 		case C_RELAT:
 			v += static_cast<char>(curr_c);
@@ -86,21 +92,24 @@ Token* Scanner::getToken() {
 				nextChar();
 				v += static_cast<char>(curr_c);
 			}
-			tok = new LiteralToken<std::string>(TOK_OP_RELAT, v);
+			tok = std::shared_ptr<Token>(
+				new LiteralToken<std::string>(TOK_OP_RELAT, v));
 			break;
 		case C_COLON:
 			v += static_cast<char>(curr_c);
 			if (next_c == '=') {
 				nextChar();
 				v += static_cast<char>(curr_c);
-				tok = new LiteralToken<std::string>(TOK_OP_ASS, v);
+				tok = std::shared_ptr<Token>(
+					new LiteralToken<std::string>(TOK_OP_ASS, v));
 			} else {
-				tok = new Token(TOK_COLON);
+				tok = std::shared_ptr<Token>(new Token(TOK_COLON));
 			}
 			break;
 		case C_TERM:
 			v += static_cast<char>(curr_c);
-			tok = new LiteralToken<std::string>(TOK_OP_TERM, v);
+			tok = std::shared_ptr<Token>(
+				new LiteralToken<std::string>(TOK_OP_TERM, v));
 			break;
 		// Numerical constant
 		case C_DIGIT:
@@ -113,7 +122,8 @@ Token* Scanner::getToken() {
 					v += curr_c;
 				}
 			}
-			tok = new LiteralToken<float>(TOK_NUM, std::stof(v));
+			tok = std::shared_ptr<Token>(
+				new LiteralToken<float>(TOK_NUM, std::stof(v)));
 			break;
 		// String literal
 		case C_QUOTE:
@@ -126,39 +136,50 @@ Token* Scanner::getToken() {
 				LOG::ss << "EOF before string termination. Assuming closed.";
 				LOG(LOG_LEVEL::WARN);
 			}
-			tok = new LiteralToken<std::string>(TOK_STR, v);
+			tok = std::shared_ptr<Token>(
+				new LiteralToken<std::string>(TOK_STR, v));
 			break;
 		// Punctuation
 		case C_PERIOD:
-			tok = new Token(TOK_PERIOD);
+			tok = std::shared_ptr<Token>(
+				new Token(TOK_PERIOD));
 			break;
 		case C_COMMA:
-			tok = new Token(TOK_COMMA);
+			tok = std::shared_ptr<Token>(
+				new Token(TOK_COMMA));
 			break;
 		case C_SEMICOL:
-			tok = new Token(TOK_SEMICOL);
+			tok = std::shared_ptr<Token>(
+				new Token(TOK_SEMICOL));
 			break;
 		// TOK_COLON is handled by TOK_OP_ASS since it starts with C_COLON
 		case C_LPAREN:
-			tok = new Token(TOK_LPAREN);
+			tok = std::shared_ptr<Token>(
+				new Token(TOK_LPAREN));
 			break;
 		case C_RPAREN:
-			tok = new Token(TOK_RPAREN);
+			tok = std::shared_ptr<Token>(
+				new Token(TOK_RPAREN));
 			break;
 		case C_LBRACK:
-			tok = new Token(TOK_LBRACK);
+			tok = std::shared_ptr<Token>(
+				new Token(TOK_LBRACK));
 			break;
 		case C_RBRACK:
-			tok = new Token(TOK_RBRACK);
+			tok = std::shared_ptr<Token>(
+				new Token(TOK_RBRACK));
 			break;
 		case C_LBRACE:
-			tok = new Token(TOK_LBRACE);
+			tok = std::shared_ptr<Token>(
+				new Token(TOK_LBRACE));
 			break;
 		case C_RBRACE:
-			tok = new Token(TOK_RBRACE);
+			tok = std::shared_ptr<Token>(
+				new Token(TOK_RBRACE));
 			break;
 		case C_EOF:
-			tok = new Token(TOK_EOF);
+			tok = std::shared_ptr<Token>(
+				new Token(TOK_EOF));
 			break;
 		default:
 			std::stringstream ss;
@@ -166,7 +187,8 @@ Token* Scanner::getToken() {
 				<< static_cast<char>(curr_c)
 				<< ".\tTreating as whitespace.";
 			LOG(LOG_LEVEL::WARN);
-			tok = new Token();
+			tok = std::shared_ptr<Token>(
+				new Token());
 			break;
 	}
 	return tok;
@@ -243,27 +265,5 @@ void Scanner::eatBlockComment() {
 		LOG::ss << "EOF before block comment termination. Assuming closed.";
 		LOG(LOG_LEVEL::WARN);
 	}
-}
-
-void Scanner::makeSymTab() {
-	sym_tab["program"]		= TOK_RW_PROG;
-	sym_tab["is"]			= TOK_RW_IS;
-	sym_tab["begin"]		= TOK_RW_BEG;
-	sym_tab["end"]			= TOK_RW_END;
-	sym_tab["global"]		= TOK_RW_GLOB;
-	sym_tab["procedure"]	= TOK_RW_PROC;
-	sym_tab["variable"]		= TOK_RW_VAR;
-	sym_tab["integer"]		= TOK_RW_INT;
-	sym_tab["float"]		= TOK_RW_FLT;
-	sym_tab["string"]		= TOK_RW_STR;
-	sym_tab["bool"]			= TOK_RW_BOOL;
-	sym_tab["if"]			= TOK_RW_IF;
-	sym_tab["then"]			= TOK_RW_THEN;
-	sym_tab["else"]			= TOK_RW_ELSE;
-	sym_tab["for"]			= TOK_RW_FOR;
-	sym_tab["return"]		= TOK_RW_RET;
-	sym_tab["not"]			= TOK_RW_NOT;
-	sym_tab["true"]			= TOK_RW_TRUE;
-	sym_tab["false"]		= TOK_RW_FALSE;
 }
 

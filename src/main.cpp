@@ -1,9 +1,10 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include <string>
-#include <iostream>
 #include <fstream>
+#include <iostream>
+#include <memory>
+#include <string>
 
 #include "log.h"
 #include "token.h"
@@ -26,14 +27,14 @@ int main(int argc, char* argv[]) {
 	LOG(LOG_LEVEL::DEBUG);
 
 	// Set up symbol table
-	
+	std::shared_ptr<Environment> env(new Environment());
 
 	// Set up scanner
-	Scanner scanner;
+	Scanner scanner(env);
 	if (!scanner.init(src_file)) {
 		exit(EXIT_FAILURE);
 	}
-	Token* t(nullptr);
+	std::shared_ptr<Token> t(nullptr);
 	bool scanning = true;
 
 	// Scan
@@ -42,7 +43,6 @@ int main(int argc, char* argv[]) {
 		LOG::ss << "New token: " << t->getStr();
 		LOG(LOG_LEVEL::DEBUG);
 		if (t->getType() == TOK_EOF) scanning = false;
-		delete t;
 		t = nullptr;
 	}
 	exit(EXIT_SUCCESS);
