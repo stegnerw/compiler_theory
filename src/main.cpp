@@ -1,7 +1,10 @@
+#include <stdlib.h>
 #include <unistd.h>
+
 #include <string>
 #include <iostream>
 #include <fstream>
+
 #include "log.h"
 #include "token.h"
 #include "scanner.h"
@@ -12,25 +15,37 @@ void show_usage(std::string prog_name);
 void welcome_msg();
 
 int main(int argc, char* argv[]) {
+	// Set up, parse args, etc
 	std::string src_file, log_file;
 	bool show_welcome = true;
-	if (!parse_args(argc, argv, src_file, log_file, show_welcome)) return 1;
+	if (!parse_args(argc, argv, src_file, log_file, show_welcome)) {
+		exit(EXIT_FAILURE);
+	}
 	if (show_welcome) welcome_msg();
 	LOG::ss << "Begin scanning file: " << src_file;
 	LOG(LOG_LEVEL::DEBUG);
+
+	// Set up symbol table
+	
+
+	// Set up scanner
 	Scanner scanner;
-	if (!scanner.init(src_file)) return 1;
-	Token* t(NULL);
+	if (!scanner.init(src_file)) {
+		exit(EXIT_FAILURE);
+	}
+	Token* t(nullptr);
 	bool scanning = true;
+
+	// Scan
 	while (scanning) {
 		t = scanner.getToken();
-		LOG::ss << "New token:\t" << t->getStr();
+		LOG::ss << "New token: " << t->getStr();
 		LOG(LOG_LEVEL::DEBUG);
 		if (t->getType() == TOK_EOF) scanning = false;
 		delete t;
-		t = NULL;
+		t = nullptr;
 	}
-	return 0;
+	exit(EXIT_SUCCESS);
 }
 
 bool parse_args(int argc, char* argv[], std::string &src_file,
