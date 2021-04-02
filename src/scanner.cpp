@@ -76,13 +76,11 @@ std::shared_ptr<Token> Scanner::getToken() {
 		// Operators (Assignment handles colon)
 		case C_EXPR:
 			v += static_cast<char>(curr_c);
-			tok = std::shared_ptr<Token>(
-				new LiteralToken<std::string>(TOK_OP_EXPR, v));
+			tok = std::shared_ptr<Token>(new OpToken(TOK_OP_EXPR, v));
 			break;
 		case C_ARITH:
 			v += static_cast<char>(curr_c);
-			tok = std::shared_ptr<Token>(
-				new LiteralToken<std::string>(TOK_OP_ARITH, v));
+			tok = std::shared_ptr<Token>(new OpToken(TOK_OP_ARITH, v));
 			break;
 		case C_RELAT:
 			v += static_cast<char>(curr_c);
@@ -90,38 +88,40 @@ std::shared_ptr<Token> Scanner::getToken() {
 				nextChar();
 				v += static_cast<char>(curr_c);
 			}
-			tok = std::shared_ptr<Token>(
-				new LiteralToken<std::string>(TOK_OP_RELAT, v));
+			tok = std::shared_ptr<Token>(new OpToken(TOK_OP_RELAT, v));
 			break;
 		case C_COLON:
 			v += static_cast<char>(curr_c);
 			if (next_c == '=') {
 				nextChar();
 				v += static_cast<char>(curr_c);
-				tok = std::shared_ptr<Token>(
-					new LiteralToken<std::string>(TOK_OP_ASS, v));
+				tok = std::shared_ptr<Token>(new OpToken(TOK_OP_ASS, v));
 			} else {
 				tok = std::shared_ptr<Token>(new Token(TOK_COLON));
 			}
 			break;
 		case C_TERM:
 			v += static_cast<char>(curr_c);
-			tok = std::shared_ptr<Token>(
-				new LiteralToken<std::string>(TOK_OP_TERM, v));
+			tok = std::shared_ptr<Token>(new OpToken(TOK_OP_TERM, v));
 			break;
 		// Numerical constant
 		case C_DIGIT:
 			v += curr_c;
-			while (next_ct == C_DIGIT || next_ct == C_UNDER
-					|| next_ct == C_PERIOD){
+			while (next_ct == C_DIGIT || next_ct == C_UNDER || next_ct == C_PERIOD){
 				nextChar();
 				// Skip underscores
 				if (curr_ct != C_UNDER) {
 					v += curr_c;
 				}
 			}
-			tok = std::shared_ptr<Token>(
-				new LiteralToken<float>(TOK_NUM, std::stof(v)));
+			// If there is a decimal make it a float, else int
+			if (v.find('.') == std::string::npos) {
+				tok = std::shared_ptr<Token>(new LiteralToken<float>(TOK_NUM,
+						std::stof(v)));
+			} else {
+				tok = std::shared_ptr<Token>(new LiteralToken<int>(TOK_NUM,
+						std::stoi(v)));
+			}
 			break;
 		// String literal
 		case C_QUOTE:
@@ -133,58 +133,46 @@ std::shared_ptr<Token> Scanner::getToken() {
 				v += '"';
 				LOG(ERROR) << "EOF before string termination - assuming closed";
 			}
-			tok = std::shared_ptr<Token>(
-				new LiteralToken<std::string>(TOK_STR, v));
+			tok = std::shared_ptr<Token>(new LiteralToken<std::string>(TOK_STR, v));
 			break;
 		// Punctuation
 		case C_PERIOD:
-			tok = std::shared_ptr<Token>(
-				new Token(TOK_PERIOD));
+			tok = std::shared_ptr<Token>(new Token(TOK_PERIOD));
 			break;
 		case C_COMMA:
-			tok = std::shared_ptr<Token>(
-				new Token(TOK_COMMA));
+			tok = std::shared_ptr<Token>(new Token(TOK_COMMA));
 			break;
 		case C_SEMICOL:
-			tok = std::shared_ptr<Token>(
-				new Token(TOK_SEMICOL));
+			tok = std::shared_ptr<Token>(new Token(TOK_SEMICOL));
 			break;
 		// TOK_COLON is handled by TOK_OP_ASS since it starts with C_COLON
 		case C_LPAREN:
-			tok = std::shared_ptr<Token>(
-				new Token(TOK_LPAREN));
+			tok = std::shared_ptr<Token>(new Token(TOK_LPAREN));
 			break;
 		case C_RPAREN:
-			tok = std::shared_ptr<Token>(
-				new Token(TOK_RPAREN));
+			tok = std::shared_ptr<Token>(new Token(TOK_RPAREN));
 			break;
 		case C_LBRACK:
-			tok = std::shared_ptr<Token>(
-				new Token(TOK_LBRACK));
+			tok = std::shared_ptr<Token>(new Token(TOK_LBRACK));
 			break;
 		case C_RBRACK:
-			tok = std::shared_ptr<Token>(
-				new Token(TOK_RBRACK));
+			tok = std::shared_ptr<Token>(new Token(TOK_RBRACK));
 			break;
 		case C_LBRACE:
-			tok = std::shared_ptr<Token>(
-				new Token(TOK_LBRACE));
+			tok = std::shared_ptr<Token>(new Token(TOK_LBRACE));
 			break;
 		case C_RBRACE:
-			tok = std::shared_ptr<Token>(
-				new Token(TOK_RBRACE));
+			tok = std::shared_ptr<Token>(new Token(TOK_RBRACE));
 			break;
 		case C_EOF:
-			tok = std::shared_ptr<Token>(
-				new Token(TOK_EOF));
+			tok = std::shared_ptr<Token>(new Token(TOK_EOF));
 			break;
 		default:
 			std::stringstream ss;
 			LOG(ERROR) << "Invalid character/token encountered: "
-				<< static_cast<char>(curr_c)
-				<< " - treating as whitespace";
-			tok = std::shared_ptr<Token>(
-				new Token());
+					<< static_cast<char>(curr_c)
+					<< " - treating as whitespace";
+			tok = std::shared_ptr<Token>(new Token());
 			break;
 	}
 	return tok;
@@ -260,4 +248,3 @@ void Scanner::eatBlockComment() {
 		LOG(WARN) << "EOF before block comment termination - assuming closed";
 	}
 }
-
