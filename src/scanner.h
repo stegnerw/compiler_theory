@@ -14,7 +14,7 @@ class Scanner {
 public:
 	Scanner(std::shared_ptr<Environment>);
 	~Scanner();
-	bool init(std::string &src_file);
+	bool init(const std::string&);
 	std::shared_ptr<Token> getToken();
 	bool hasErrored();
 private:

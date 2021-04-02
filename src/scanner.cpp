@@ -25,12 +25,13 @@ Scanner::~Scanner() {
 	}
 }
 
-bool Scanner::init(std::string &src_file) {
+bool Scanner::init(const std::string& src_file) {
 	LOG(INFO) << "Initializing scanner for the file " << src_file;
 	errored = false;
 	line_number = 1;
 	src_fstream.open(src_file, std::ios::in);
 	if (!src_fstream) {
+		LOG(ERROR) << "Failed to initialize scanner";
 		LOG(ERROR) << "Invalid file: " << src_file;
 		LOG(ERROR) << "Make sure it exists and you have read permissions";
 		errored = true;
@@ -177,6 +178,7 @@ std::shared_ptr<Token> Scanner::getToken() {
 			tok = std::shared_ptr<Token>(new Token());
 			break;
 	}
+	LOG(DEBUG) << "New token: " << tok->getStr();
 	return tok;
 }
 

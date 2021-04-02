@@ -8,7 +8,7 @@
 
 #include "log.h"
 #include "token.h"
-#include "scanner.h"
+#include "parser.h"
 
 bool parse_args(int argc, char* argv[], std::string &src_file,
 		std::string &log_file, bool &show_welcome);
@@ -23,27 +23,20 @@ int main(int argc, char* argv[]) {
 		exit(EXIT_FAILURE);
 	}
 	if (show_welcome) welcome_msg();
-	LOG(DEBUG) << "Begin scanning file: " << src_file;
+	LOG(INFO) << "Begin compiling file: " << src_file;
 
-	// Set up symbol table
-	std::shared_ptr<Environment> env(new Environment());
-
-	// Set up scanner
-	Scanner scanner(env);
-	if (!scanner.init(src_file)) {
+	// Set up parser
+	Parser parser;
+	if (!parser.init(src_file)) {
 		exit(EXIT_FAILURE);
 	}
-	std::shared_ptr<Token> t(nullptr);
-	bool scanning = true;
 
-	// Scan
-	while (scanning) {
-		t = scanner.getToken();
-		LOG(DEBUG) << "New token: " << t->getStr();
-		if (t->getType() == TOK_EOF) scanning = false;
-		t = nullptr;
+	// Parse the file
+	if (parser.parse()) {
+		exit(EXIT_SUCCESS);
+	} else {
+		exit(EXIT_FAILURE);
 	}
-	exit(EXIT_SUCCESS);
 }
 
 bool parse_args(int argc, char* argv[], std::string &src_file,
