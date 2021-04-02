@@ -132,6 +132,7 @@ std::shared_ptr<Token> Scanner::getToken() {
 			if (curr_ct == C_EOF) {
 				v += '"';
 				LOG(ERROR) << "EOF before string termination - assuming closed";
+				errored = true;
 			}
 			tok = std::shared_ptr<Token>(new LiteralToken<std::string>(TOK_STR, v));
 			break;
@@ -172,6 +173,7 @@ std::shared_ptr<Token> Scanner::getToken() {
 			LOG(ERROR) << "Invalid character/token encountered: "
 					<< static_cast<char>(curr_c)
 					<< " - treating as whitespace";
+			errored = true;
 			tok = std::shared_ptr<Token>(new Token());
 			break;
 	}
