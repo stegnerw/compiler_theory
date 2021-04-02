@@ -66,4 +66,4 @@ $(C_LOG_DIR)/%.log: $(C_TST_DIR)/%.src $(TARGET) | $(C_LOG_DIR)
 	$(TARGET) -w -v 2 -l $@ -i $<
 
 $(I_LOG_DIR)/%.log: $(I_TST_DIR)/%.src $(TARGET) | $(I_LOG_DIR)
-	$(TARGET) -w -v 2 -l $@ -i $<
+	-$(TARGET) -w -v 2 -l $@ -i $<
