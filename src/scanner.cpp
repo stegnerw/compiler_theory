@@ -26,19 +26,17 @@ Scanner::~Scanner() {
 }
 
 bool Scanner::init(std::string &src_file) {
+	LOG(INFO) << "Initializing scanner for the file " << src_file;
 	errored = false;
 	line_number = 1;
 	src_fstream.open(src_file, std::ios::in);
 	if (!src_fstream) {
-		LOG::ss << "Invalid file: " << src_file;
-		LOG(LOG_LEVEL::ERROR);
-		LOG::ss << "Make sure it exists and you have read permissions.";
-		LOG(LOG_LEVEL::ERROR);
+		LOG(ERROR) << "Invalid file: " << src_file;
+		LOG(ERROR) << "Make sure it exists and you have read permissions";
 		errored = true;
 		return false;
 	}
-	LOG::ss << "Scanner initialized.";
-	LOG(LOG_LEVEL::DEBUG);
+	LOG(INFO) << "Scanner initialized";
 	return true;
 }
 
@@ -133,8 +131,7 @@ std::shared_ptr<Token> Scanner::getToken() {
 			} while ((curr_ct != C_QUOTE) && (curr_ct != C_EOF));
 			if (curr_ct == C_EOF) {
 				v += '"';
-				LOG::ss << "EOF before string termination. Assuming closed.";
-				LOG(LOG_LEVEL::WARN);
+				LOG(ERROR) << "EOF before string termination - assuming closed";
 			}
 			tok = std::shared_ptr<Token>(
 				new LiteralToken<std::string>(TOK_STR, v));
@@ -183,10 +180,9 @@ std::shared_ptr<Token> Scanner::getToken() {
 			break;
 		default:
 			std::stringstream ss;
-			LOG::ss << "Invalid character/token encountered: "
+			LOG(ERROR) << "Invalid character/token encountered: "
 				<< static_cast<char>(curr_c)
-				<< ".\tTreating as whitespace.";
-			LOG(LOG_LEVEL::WARN);
+				<< " - treating as whitespace";
 			tok = std::shared_ptr<Token>(
 				new Token());
 			break;
@@ -213,8 +209,7 @@ void Scanner::nextChar() {
 		next_c = src_fstream.peek();
 		next_ct = next_c < 0 ? C_EOF : char_table.getCharType(next_c);
 	} else {
-		LOG::ss << "Could not read character from file.";
-		LOG(LOG_LEVEL::ERROR);
+		LOG(ERROR) << "Failed to read file";
 		errored = true;
 	}
 }
@@ -262,8 +257,7 @@ void Scanner::eatBlockComment() {
 		nextChar();
 	} while ((block_level > 0) && (curr_ct != C_EOF));
 	if (curr_ct == C_EOF) {
-		LOG::ss << "EOF before block comment termination. Assuming closed.";
-		LOG(LOG_LEVEL::WARN);
+		LOG(WARN) << "EOF before block comment termination - assuming closed";
 	}
 }
 

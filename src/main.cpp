@@ -23,8 +23,7 @@ int main(int argc, char* argv[]) {
 		exit(EXIT_FAILURE);
 	}
 	if (show_welcome) welcome_msg();
-	LOG::ss << "Begin scanning file: " << src_file;
-	LOG(LOG_LEVEL::DEBUG);
+	LOG(DEBUG) << "Begin scanning file: " << src_file;
 
 	// Set up symbol table
 	std::shared_ptr<Environment> env(new Environment());
@@ -40,8 +39,7 @@ int main(int argc, char* argv[]) {
 	// Scan
 	while (scanning) {
 		t = scanner.getToken();
-		LOG::ss << "New token: " << t->getStr();
-		LOG(LOG_LEVEL::DEBUG);
+		LOG(DEBUG) << "New token: " << t->getStr();
 		if (t->getType() == TOK_EOF) scanning = false;
 		t = nullptr;
 	}
@@ -60,10 +58,8 @@ bool parse_args(int argc, char* argv[], std::string &src_file,
 			case 'v':
 				// setMinLevel handles the bound checking
 				if (!LOG::setMinLevel(std::atoi(optarg))) {
-					LOG::ss << "Could not set verbosity level.";
-					LOG(LOG_LEVEL::ERROR);
-					LOG::ss << "Pass an integer from 0-3.";
-					LOG(LOG_LEVEL::ERROR);
+					LOG(ERROR) << "Could not set verbosity level";
+					LOG(ERROR) << "Pass an integer from 0-3";
 					error = true;
 				}
 				break;
@@ -72,8 +68,7 @@ bool parse_args(int argc, char* argv[], std::string &src_file,
 				break;
 			case 'l':
 				if (!LOG::setLogFile(optarg)) {
-					LOG::ss << "Cannot open file for write: " << optarg;
-					LOG(LOG_LEVEL::ERROR);
+					LOG(ERROR) << "Cannot open file for write: " << optarg;
 					error = true;
 				}
 				log_file = optarg;
@@ -82,8 +77,7 @@ bool parse_args(int argc, char* argv[], std::string &src_file,
 				show_welcome = false;
 				break;
 			case '?':
-				LOG::ss << "Invalid flag: " << static_cast<char>(optopt);
-				LOG(LOG_LEVEL::ERROR);
+				LOG(ERROR) << "Invalid flag: " << static_cast<char>(optopt);
 				error = true;
 				break;
 		}

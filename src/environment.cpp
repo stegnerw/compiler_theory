@@ -67,6 +67,11 @@ bool Environment::insert(const std::string& key, std::shared_ptr<Token> t,
 			success = local_symbol_table_stack.top().insert(key, t);
 		}
 	}
+	if (success) {
+		LOG(DEBUG) << "Added " << t << " to symbol table with key " << key;
+	} else {
+		LOG(DEBUG) << "Failed to add " << t << " to symbol table with key " << key;
+	}
 	return success;
 }
 
@@ -81,15 +86,16 @@ bool Environment::isReserved(const std::string& key) {
 }
 
 void Environment::push() {
+	LOG(DEBUG) << "Pushing symbol table stack";
 	local_symbol_table_stack.push(SymbolTable());
 }
 
 void Environment::pop() {
 	if (!local_symbol_table_stack.empty()) {
+		LOG(DEBUG) << "Popping symbol table stack";
 		local_symbol_table_stack.pop();
 	} else {
-		LOG::ss << "Attempt to pop empty symbol table stack.";
-		LOG(LOG_LEVEL::WARN);
+		LOG(WARN) << "Attempt to pop empty symbol table stack";
 	}
 }
 
