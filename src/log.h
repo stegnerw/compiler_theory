@@ -92,4 +92,3 @@ private:
 };
 
 #endif // LOG_H
-

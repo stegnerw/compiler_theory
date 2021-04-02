@@ -98,4 +98,3 @@ void Environment::pop() {
 		LOG(WARN) << "Attempt to pop empty symbol table stack";
 	}
 }
-

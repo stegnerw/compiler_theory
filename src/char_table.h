@@ -35,4 +35,3 @@ class CharTable {
 };
 
 #endif // CHAR_TABLE_H
-

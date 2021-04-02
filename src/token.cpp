@@ -54,4 +54,3 @@ const std::string IdToken::type_mark_names[NUM_TYPE_ENUMS] = {
 	"BOOL",
 	"PROC"
 };
-

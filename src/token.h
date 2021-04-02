@@ -9,46 +9,46 @@
 #include <sstream>
 
 enum TokenType {
-	TOK_INVALID = 0,	// Invalid token - the default
-	TOK_RW_PROG,		// program
-	TOK_RW_IS,			// is
-	TOK_RW_BEG,			// begin
-	TOK_RW_END,			// end
-	TOK_RW_GLOB,		// global
-	TOK_RW_PROC,		// procedure
-	TOK_RW_VAR,			// variable
-	TOK_RW_INT,			// integer
-	TOK_RW_FLT,			// float
-	TOK_RW_STR,			// string
-	TOK_RW_BOOL,		// bool
-	TOK_RW_IF,			// if
-	TOK_RW_THEN,		// then
-	TOK_RW_ELSE,		// else
-	TOK_RW_FOR,			// for
-	TOK_RW_RET,			// return
-	TOK_RW_NOT,			// not
-	TOK_RW_TRUE,		// true
-	TOK_RW_FALSE,		// false
-	TOK_OP_EXPR,		// & |
-	TOK_OP_ARITH,		// + -
-	TOK_OP_RELAT,		// < <= > >= == !=
-	TOK_OP_ASS,			// :=
-	TOK_OP_TERM,		// * /
-	TOK_IDENT,			// Identifiers
-	TOK_NUM,			// Numbers (float and int)
-	TOK_STR,			// String literals: "[^"]"
-	TOK_PERIOD,			// .
-	TOK_COMMA,			// ,
-	TOK_SEMICOL,		// ;
-	TOK_COLON,			// :
-	TOK_LPAREN,			// (
-	TOK_RPAREN,			// )
-	TOK_LBRACK,			// [
-	TOK_RBRACK,			// ]
-	TOK_LBRACE,			// {
-	TOK_RBRACE,			// }
-	TOK_EOF,			// End of file
-	NUM_TOK_ENUMS		// Number of token enums (for array size)
+	TOK_INVALID = 0, // Invalid token - the default
+	TOK_RW_PROG, // program
+	TOK_RW_IS, // is
+	TOK_RW_BEG, // begin
+	TOK_RW_END, // end
+	TOK_RW_GLOB, // global
+	TOK_RW_PROC, // procedure
+	TOK_RW_VAR, // variable
+	TOK_RW_INT, // integer
+	TOK_RW_FLT, // float
+	TOK_RW_STR, // string
+	TOK_RW_BOOL, // bool
+	TOK_RW_IF, // if
+	TOK_RW_THEN, // then
+	TOK_RW_ELSE, // else
+	TOK_RW_FOR, // for
+	TOK_RW_RET, // return
+	TOK_RW_NOT, // not
+	TOK_RW_TRUE, // true
+	TOK_RW_FALSE, // false
+	TOK_OP_EXPR, // & |
+	TOK_OP_ARITH, // + -
+	TOK_OP_RELAT, // < <= > >= == !=
+	TOK_OP_ASS, // :=
+	TOK_OP_TERM, // * /
+	TOK_IDENT, // Identifiers
+	TOK_NUM, // Numbers (float and int)
+	TOK_STR, // String literals: "[^"]"
+	TOK_PERIOD, // .
+	TOK_COMMA, // ,
+	TOK_SEMICOL, // ;
+	TOK_COLON, // :
+	TOK_LPAREN, // (
+	TOK_RPAREN, // )
+	TOK_LBRACK, // [
+	TOK_RBRACK, // ]
+	TOK_LBRACE, // {
+	TOK_RBRACE, // }
+	TOK_EOF, // End of file
+	NUM_TOK_ENUMS, // Number of token enums (for array size)
 };
 
 enum TypeMark {
@@ -58,7 +58,7 @@ enum TypeMark {
 	TYPE_STR,
 	TYPE_BOOL,
 	TYPE_PROC,
-	NUM_TYPE_ENUMS
+	NUM_TYPE_ENUMS,
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -142,4 +142,3 @@ private:
 };
 
 #endif // TOKEN_H
-

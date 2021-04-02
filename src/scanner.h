@@ -38,4 +38,3 @@ private:
 };
 
 #endif // SCANNER_H
-

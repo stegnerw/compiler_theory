@@ -23,4 +23,3 @@ private:
 };
 
 #endif // ENVIRONMENT_H
-

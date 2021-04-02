@@ -23,4 +23,3 @@ std::ofstream LOG::log_fstream;
 const std::string LOG::LABELS[4] = {"[DEBUG]\t", "[INFO ]\t", "[WARN ]\t",
 		"[ERROR]\t"};
 const std::string LOG::COLORS[4] = {COL_CYN, COL_WHT, COL_YEL, COL_RED};
-

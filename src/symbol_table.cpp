@@ -29,4 +29,3 @@ bool SymbolTable::insert(const std::string& key, std::shared_ptr<Token> t) {
 	}
 	return success;
 }
-

@@ -20,4 +20,3 @@ private:
 };
 
 #endif // SYMBOL_TABLE_H
-

@@ -68,4 +68,3 @@ CharType CharTable::getCharType(int c) {
 	}
 	return C_INVALID;
 }
-
