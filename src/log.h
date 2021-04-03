@@ -12,6 +12,7 @@
 #define LOG_H
 
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -38,6 +39,8 @@ public:
 		log_fstream.open(log_file, std::ios::app);
 		std::cout << COLORS[type];
 		operator<<(LABELS[type]);
+		operator<<(" Line ") << std::setfill(' ') << std::setw(3) << line_number
+				<< ' ';
 	}
 	~LOG() {
 		// Reset color, new line, and handle stream
