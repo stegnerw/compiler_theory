@@ -29,6 +29,7 @@ bool Scanner::init(const std::string& src_file) {
 	LOG(INFO) << "Initializing scanner for the file " << src_file;
 	errored = false;
 	line_number = 1;
+	LOG::line_number = line_number;
 	src_fstream.open(src_file, std::ios::in);
 	if (!src_fstream) {
 		LOG(ERROR) << "Failed to initialize scanner";
