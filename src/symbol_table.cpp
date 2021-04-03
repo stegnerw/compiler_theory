@@ -20,12 +20,15 @@ std::shared_ptr<Token> SymbolTable::lookup(const std::string& key) {
 }
 
 // Environment checks for reserved words
-bool SymbolTable::insert(const std::string& key, std::shared_ptr<Token> t) {
-	bool success = true;
-	if (lookup(key)) {
-		success = false;
-	} else {
+std::shared_ptr<Token> SymbolTable::insert(const std::string& key,
+		std::shared_ptr<Token> t) {
+	std::shared_ptr<Token> new_token = lookup(key);
+	if (!new_token) {
 		symbol_map[key] = t;
+		new_token = t;
+	} else {
+		LOG(WARN) << "Attempt to add duplicate symbol: " << key;
+		new_token = nullptr;
 	}
-	return success;
+	return new_token;
 }

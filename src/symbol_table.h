@@ -13,7 +13,7 @@ public:
 	SymbolTable();
 	~SymbolTable();
 	std::shared_ptr<Token> lookup(const std::string&);
-	bool insert(const std::string&, std::shared_ptr<Token>);
+	std::shared_ptr<Token> insert(const std::string&, std::shared_ptr<Token>);
 
 private:
 	SymbolMap symbol_map;

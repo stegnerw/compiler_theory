@@ -57,22 +57,26 @@ std::shared_ptr<Token> Environment::lookup(const std::string& key) {
 	return ret_val;
 }
 
-bool Environment::insert(const std::string& key, std::shared_ptr<Token> t,
-		const bool& is_global) {
-	bool success = false;
+std::shared_ptr<Token> Environment::insert(const std::string& key,
+		std::shared_ptr<Token> t, const bool& is_global) {
+	std::shared_ptr<Token> new_token = nullptr;
 	if (!isReserved(key)) {
 		if (is_global) {
-			success = global_symbol_table.insert(key, t);
+			new_token = global_symbol_table.insert(key, t);
 		} else if (!local_symbol_table_stack.empty()) {
-			success = local_symbol_table_stack.top().insert(key, t);
+			new_token = local_symbol_table_stack.top().insert(key, t);
+		} else {
+			LOG(WARN) << "Attempt to add local symbol with no local symbol table";
 		}
+	} else {
+		LOG(WARN) << "Attempt to overwrite reserved word: " << key;
 	}
-	if (success) {
+	if (new_token) {
 		LOG(DEBUG) << "Added " << t << " to symbol table with key " << key;
 	} else {
-		LOG(DEBUG) << "Failed to add " << t << " to symbol table with key " << key;
+		LOG(WARN) << "Failed to add " << t << " to symbol table with key " << key;
 	}
-	return success;
+	return new_token;
 }
 
 bool Environment::isReserved(const std::string& key) {
