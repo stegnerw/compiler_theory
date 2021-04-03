@@ -7,6 +7,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <sstream>
+#include <string>
 
 enum TokenType {
 	TOK_INVALID = 0, // Invalid token - the default
@@ -72,10 +73,14 @@ public:
 	virtual ~Token() {}
 	virtual std::string const getStr() {
 		std::stringstream ss;
-		ss << "< " << token_names[type] << " >";
+		ss << "{ " << token_names[type] << " }";
 		return ss.str();
 	}
 	TokenType const getType() { return type; }
+	static std::string getTokenName(const TokenType& t) {
+		return token_names[t];
+	}
+
 protected:
 	static const std::string token_names[NUM_TOK_ENUMS];
 	TokenType type;
@@ -90,9 +95,10 @@ public:
 	std::string getVal() { return val; }
 	std::string const getStr() {
 		std::stringstream ss;
-		ss << "< " << token_names[type] << ", " << val << " >";
+		ss << "{ " << token_names[type] << ", " << val << " }";
 		return ss.str();
 	}
+
 private:
 	std::string val;
 };
@@ -110,14 +116,15 @@ public:
 	}
 	std::string const getStr() {
 		std::stringstream ss;
-		ss << "< " << token_names[type] << ", " << lexeme << ", "
-			<< type_mark_names[type_mark] << " >";
+		ss << "{ " << token_names[type] << ", " << lexeme << ", "
+			<< type_mark_names[type_mark] << " }";
 		return ss.str();
 	}
 	TypeMark getTypeMark() { return type_mark; }
 	void setTypeMark(const TypeMark& tm) { type_mark = tm; }
 	std::string getLexeme() { return lexeme; }
-protected:
+
+private:
 	static const std::string type_mark_names[NUM_TYPE_ENUMS];
 	std::string lexeme;
 	TypeMark type_mark;
@@ -134,9 +141,10 @@ public:
 	T const getVal() { return val; }
 	std::string const getStr() {
 		std::stringstream ss;
-		ss << "< " << token_names[type] << ", " << val << " >";
+		ss << "{ " << token_names[type] << ", " << val << " }";
 		return ss.str();
 	}
+
 private:
 	T val;
 };
