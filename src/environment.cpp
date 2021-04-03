@@ -72,9 +72,11 @@ std::shared_ptr<Token> Environment::insert(const std::string& key,
 		LOG(WARN) << "Attempt to overwrite reserved word: " << key;
 	}
 	if (new_token) {
-		LOG(DEBUG) << "Added " << t << " to symbol table with key " << key;
+		LOG(DEBUG) << "Added " << t->getStr() << " to symbol table with key "
+				<< key;
 	} else {
-		LOG(WARN) << "Failed to add " << t << " to symbol table with key " << key;
+		LOG(WARN) << "Failed to add " << t->getStr()
+				<< " to symbol table with key " << key;
 	}
 	return new_token;
 }
