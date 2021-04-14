@@ -46,8 +46,6 @@ enum TokenType {
 	TOK_RPAREN, // )
 	TOK_LBRACK, // [
 	TOK_RBRACK, // ]
-	TOK_LBRACE, // {
-	TOK_RBRACE, // }
 	TOK_EOF, // End of file
 	NUM_TOK_ENUMS, // Number of token enums (for array size)
 };

@@ -161,12 +161,6 @@ std::shared_ptr<Token> Scanner::getToken() {
 		case C_RBRACK:
 			tok = std::shared_ptr<Token>(new Token(TOK_RBRACK));
 			break;
-		case C_LBRACE:
-			tok = std::shared_ptr<Token>(new Token(TOK_LBRACE));
-			break;
-		case C_RBRACE:
-			tok = std::shared_ptr<Token>(new Token(TOK_RBRACE));
-			break;
 		case C_EOF:
 			tok = std::shared_ptr<Token>(new Token(TOK_EOF));
 			break;

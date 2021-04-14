@@ -43,8 +43,6 @@ const std::string Token::token_names[NUM_TOK_ENUMS] = {
 	"R_PARENTHESIS",
 	"L_BRACKET",
 	"R_BRACKET",
-	"L_BRACE",
-	"R_BRACE",
 	"END_OF_FILE"
 };
 

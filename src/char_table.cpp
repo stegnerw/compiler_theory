@@ -21,10 +21,6 @@ CharTable::CharTable() {
 				char_type_table[i] = C_LBRACK; break;
 			case ']':
 				char_type_table[i] = C_RBRACK; break;
-			case '{':
-				char_type_table[i] = C_LBRACE; break;
-			case '}':
-				char_type_table[i] = C_RBRACE; break;
 			case '&':
 			case '|':
 				char_type_table[i] = C_EXPR; break;

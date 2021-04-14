@@ -15,8 +15,6 @@ enum CharType {
 	C_RPAREN,	// )
 	C_LBRACK,	// [
 	C_RBRACK,	// ]
-	C_LBRACE,	// {
-	C_RBRACE,	// }
 	C_EXPR,		// & |
 	C_RELAT,	// < > = !
 	C_ARITH,	// + -
