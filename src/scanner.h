@@ -16,9 +16,7 @@ public:
 	~Scanner();
 	bool init(const std::string&);
 	std::shared_ptr<Token> getToken();
-	bool hasErrored();
 private:
-	bool errored;
 	int line_number;
 	CharTable char_table;
 	int curr_c;

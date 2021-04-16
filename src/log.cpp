@@ -17,6 +17,7 @@ int LOG::line_number = 0;
 // Private
 ////////////////////////////////////////////////////////////////////////////////
 
+bool LOG::has_errored = false;
 LOG_LEVEL LOG::min_level = INFO;
 std::string LOG::log_file;
 std::ofstream LOG::log_fstream;

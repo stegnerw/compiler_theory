@@ -15,7 +15,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 Scanner::Scanner(std::shared_ptr<Environment> e) :
-		errored(false),
 		line_number(1),
 		env(e){}
 
@@ -27,7 +26,6 @@ Scanner::~Scanner() {
 
 bool Scanner::init(const std::string& src_file) {
 	LOG(INFO) << "Initializing scanner for the file " << src_file;
-	errored = false;
 	line_number = 1;
 	LOG::line_number = line_number;
 	src_fstream.open(src_file, std::ios::in);
@@ -35,7 +33,6 @@ bool Scanner::init(const std::string& src_file) {
 		LOG(ERROR) << "Failed to initialize scanner";
 		LOG(ERROR) << "Invalid file: " << src_file;
 		LOG(ERROR) << "Make sure it exists and you have read permissions";
-		errored = true;
 		return false;
 	}
 	LOG(INFO) << "Scanner initialized";
@@ -99,7 +96,7 @@ std::shared_ptr<Token> Scanner::getToken() {
 				v += static_cast<char>(curr_c);
 				tok = std::shared_ptr<Token>(new OpToken(TOK_OP_ASS, v));
 			} else {
-				tok = std::shared_ptr<Token>(new Token(TOK_COLON));
+				tok = std::shared_ptr<Token>(new Token(TOK_COLON, ":"));
 			}
 			break;
 		case C_TERM:
@@ -118,11 +115,11 @@ std::shared_ptr<Token> Scanner::getToken() {
 			}
 			// If there is a decimal make it a float, else int
 			if (v.find('.') == std::string::npos) {
-				tok = std::shared_ptr<Token>(new LiteralToken<float>(TOK_NUM,
-						std::stof(v)));
-			} else {
 				tok = std::shared_ptr<Token>(new LiteralToken<int>(TOK_NUM,
-						std::stoi(v)));
+						std::stoi(v), LIT_INT));
+			} else {
+				tok = std::shared_ptr<Token>(new LiteralToken<float>(TOK_NUM,
+						std::stof(v), LIT_FLT));
 			}
 			break;
 		// String literal
@@ -134,51 +131,53 @@ std::shared_ptr<Token> Scanner::getToken() {
 			if (curr_ct == C_EOF) {
 				v += '"';
 				LOG(ERROR) << "EOF before string termination - assuming closed";
-				errored = true;
 			}
-			tok = std::shared_ptr<Token>(new LiteralToken<std::string>(TOK_STR, v));
+			tok = std::shared_ptr<Token>(new LiteralToken<std::string>(TOK_STR, v,
+					LIT_STR));
 			break;
 		// Punctuation
 		case C_PERIOD:
-			tok = std::shared_ptr<Token>(new Token(TOK_PERIOD));
+			tok = std::shared_ptr<Token>(new Token(TOK_PERIOD,
+					std::string(1, static_cast<char>(curr_c))));
 			break;
 		case C_COMMA:
-			tok = std::shared_ptr<Token>(new Token(TOK_COMMA));
+			tok = std::shared_ptr<Token>(new Token(TOK_COMMA,
+					std::string(1, static_cast<char>(curr_c))));
 			break;
 		case C_SEMICOL:
-			tok = std::shared_ptr<Token>(new Token(TOK_SEMICOL));
+			tok = std::shared_ptr<Token>(new Token(TOK_SEMICOL,
+					std::string(1, static_cast<char>(curr_c))));
 			break;
 		// TOK_COLON is handled by TOK_OP_ASS since it starts with C_COLON
 		case C_LPAREN:
-			tok = std::shared_ptr<Token>(new Token(TOK_LPAREN));
+			tok = std::shared_ptr<Token>(new Token(TOK_LPAREN,
+					std::string(1, static_cast<char>(curr_c))));
 			break;
 		case C_RPAREN:
-			tok = std::shared_ptr<Token>(new Token(TOK_RPAREN));
+			tok = std::shared_ptr<Token>(new Token(TOK_RPAREN,
+					std::string(1, static_cast<char>(curr_c))));
 			break;
 		case C_LBRACK:
-			tok = std::shared_ptr<Token>(new Token(TOK_LBRACK));
+			tok = std::shared_ptr<Token>(new Token(TOK_LBRACK,
+					std::string(1, static_cast<char>(curr_c))));
 			break;
 		case C_RBRACK:
-			tok = std::shared_ptr<Token>(new Token(TOK_RBRACK));
+			tok = std::shared_ptr<Token>(new Token(TOK_RBRACK,
+					std::string(1, static_cast<char>(curr_c))));
 			break;
 		case C_EOF:
-			tok = std::shared_ptr<Token>(new Token(TOK_EOF));
+			tok = std::shared_ptr<Token>(new Token(TOK_EOF, "<EOF>"));
 			break;
 		default:
 			std::stringstream ss;
 			LOG(ERROR) << "Invalid character/token encountered: "
 					<< static_cast<char>(curr_c)
 					<< " - treating as whitespace";
-			errored = true;
 			tok = std::shared_ptr<Token>(new Token());
 			break;
 	}
-	LOG(DEBUG) << "New token: " << tok->getStr();
+	LOG(DEBUG) << tok->getStr();
 	return tok;
-}
-
-bool Scanner::hasErrored() {
-	return errored;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -197,7 +196,6 @@ void Scanner::nextChar() {
 		next_ct = next_c < 0 ? C_EOF : char_table.getCharType(next_c);
 	} else {
 		LOG(ERROR) << "Failed to read file";
-		errored = true;
 	}
 }
 

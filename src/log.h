@@ -36,6 +36,9 @@ public:
 	LOG() = delete;
 	LOG(LOG_LEVEL type) : msg_level(type) {
 		// Open log file set console color, and print header
+		if (msg_level == ERROR) {
+			has_errored = true;
+		}
 		log_fstream.open(log_file, std::ios::app);
 		std::cout << COLORS[type];
 		operator<<(LABELS[type]);
@@ -62,6 +65,7 @@ public:
 		return *this;
 	}
 
+	static bool hasErrored() { return has_errored; }
 	static int line_number;
 	static bool setLogFile(std::string f) {
 		log_fstream.open(f, std::ios::out);
@@ -87,6 +91,7 @@ public:
 private:
 	LOG_LEVEL msg_level;
 
+	static bool has_errored;
 	static LOG_LEVEL min_level;
 	static std::string log_file;
 	static std::ofstream log_fstream;

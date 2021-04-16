@@ -10,16 +10,14 @@
 #include "scanner.h"
 #include "token.h"
 
-Parser::Parser() : env(new Environment()), scanner(env), errored(false) {}
+Parser::Parser() : env(new Environment()), scanner(env) {}
 
 bool Parser::init(const std::string& src_file) {
 	bool init_success = true;
-	errored = false;
 	if (!scanner.init(src_file)) {
 		init_success = false;
 		LOG(ERROR) << "Failed to initialize parser";
 		LOG(ERROR) << "See logs";
-		errored = true;
 	} else {
 		scan();
 	}
@@ -27,15 +25,16 @@ bool Parser::init(const std::string& src_file) {
 }
 
 //	<program> ::=
-//		<program_header> <program_body> .
+//		<program_header> <program_body> `.'
 bool Parser::parse() {
 	LOG(INFO) << "Begin parsing";
-	LOG(DEBUG) << "Parsing <program>";
+	LOG(DEBUG) << "<program>";
 	programHeader();
 	programBody();
 	expectToken(TOK_PERIOD);
+	scan();
 	LOG(INFO) << "Done parsing";
-	return !errored;
+	return !LOG::hasErrored();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -45,9 +44,6 @@ bool Parser::parse() {
 void Parser::scan() {
 	do {
 		token = scanner.getToken();
-		if (scanner.hasErrored()) {
-			errored = true;
-		}
 	} while(token->getType() == TOK_INVALID);
 }
 
@@ -55,7 +51,6 @@ bool Parser::matchToken(const TokenType& t) {
 	LOG(DEBUG) << "Matching " << Token::getTokenName(t);
 	if (token->getType() == t) {
 		LOG(DEBUG) << "Match success";
-		scan();
 		return true;
 	}
 	LOG(DEBUG) << "Match failed for: " << Token::getTokenName(t);
@@ -68,100 +63,140 @@ bool Parser::expectToken(const TokenType& t) {
 		LOG(DEBUG) << "Expect passed";
 		return true;
 	}
-	LOG(ERROR) << "Expect failed - expected " << Token::getTokenName(t)
-			<< ", got " << Token::getTokenName(token->getType()) << " instead";
-	errored = true;
-	scan();
+	LOG(ERROR) << "Expected " << Token::getTokenName(t)
+			<< ", got " << token->getStr() << " instead";
 	return false;
 }
 
 //	<program_header> ::=
-//		program <identifier> is
+//		`program' <identifier> `is'
 void Parser::programHeader() {
-	LOG(DEBUG) << "Parsing <program_header>";
+	LOG(DEBUG) << "<program_header>";
 	expectToken(TOK_RW_PROG);
-	// The program name does not get added to the symbol table
-	identifier(false, false);
+	scan();
+	identifier();
 	expectToken(TOK_RW_IS);
+	scan();
 }
 
 //	<program_body> ::=
-//			(<declaration>;)*
-//		begin
-//			(<statement>;)*
-//		end program
+//			<declarations>
+//		`begin'
+//			<statements>
+//		`end' `program'
 void Parser::programBody() {
-	LOG(DEBUG) << "Parsing <program_body>";
-	// FIRST(<declaration>) = {global, procedure, variable}
-	while ((token->getType() == TOK_RW_GLOB) || (token->getType() == TOK_RW_PROC)
-			|| (token->getType() == TOK_RW_VAR)) {
-		declaration(true);
-		expectToken(TOK_SEMICOL);
-	}
+	LOG(DEBUG) << "<program_body>";
+	declarations(true); // These are global declarations by default
+	LOG(DEBUG) << "Done parsing global declarations";
+	LOG(DEBUG) << "Global symbol table:\n" << env->getGlobalStr();
 	expectToken(TOK_RW_BEG);
+	scan();
+	statements();
+	expectToken(TOK_RW_END);
+	scan();
+	expectToken(TOK_RW_PROG);
+	scan();
+}
+
+//	<declarations> ::=
+//		(<declaration>`;')*
+void Parser::declarations(bool is_global) {
+	LOG(DEBUG) << "<declarations>";
+	// FIRST(<declaration>) = {global, procedure, variable}
+	while (matchToken(TOK_RW_GLOB) || matchToken(TOK_RW_PROC)
+			|| matchToken(TOK_RW_VAR)) {
+		declaration(is_global);
+		expectToken(TOK_SEMICOL);
+		scan();
+	}
+}
+
+//	<statements> ::=
+//		(<statement>`;')*
+void Parser::statements() {
+	LOG(DEBUG) << "<statements>";
 	// FIRST(<statement>) = {<identifier>, if, for, return}
-	while((token->getType() == TOK_IDENT) || (token->getType() == TOK_RW_IF)
-			|| (token->getType() == TOK_RW_FOR) || (token->getType() == TOK_RW_RET)) {
+	while(matchToken(TOK_IDENT) || matchToken(TOK_RW_IF) || matchToken(TOK_RW_FOR)
+			|| matchToken(TOK_RW_RET)) {
 		statement();
 		expectToken(TOK_SEMICOL);
+		scan();
 	}
-	expectToken(TOK_RW_END);
-	expectToken(TOK_RW_PROG);
 }
 
 //	<declaration> ::=
-//		[global] <procedure_declaration>
-//	| [global] <variable_declaration>
+//		[`global'] <procedure_declaration>
+//	| [`global'] <variable_declaration>
 void Parser::declaration(bool is_global) {
-	LOG(DEBUG) << "Parsing <declaration>";
-	is_global = matchToken(TOK_RW_GLOB) || is_global;
+	LOG(DEBUG) << "<declaration>";
+	if (matchToken(TOK_RW_GLOB)) {
+		is_global = true;
+		scan();
+	}
 	if (matchToken(TOK_RW_PROC)) {
 		procedureDeclaration(is_global);
 	} else if(matchToken(TOK_RW_VAR)) {
 		variableDeclaration(is_global);
 	} else {
-		LOG(ERROR) << "Unexpected token: " << Token::getTokenName(token->getType());
-		LOG(ERROR) << "Expected: " << Token::getTokenName(TOK_RW_PROC) << ", "
+		LOG(ERROR) << "Unexpected token: " << token->getStr();
+		LOG(ERROR) << "Expected: " << Token::getTokenName(TOK_RW_PROC) << " or "
 				<< Token::getTokenName(TOK_RW_VAR);
-		errored = true;
+		scan();  // TODO: Do I want to scan here? Other ways to handle errors?
 	}
 }
 
 //	<procedure_declaration> ::=
 //		<procedure_header> <procedure_body>
 void Parser::procedureDeclaration(const bool& is_global) {
-	LOG(DEBUG) << "Parsing <procedure_declaration>";
+	LOG(DEBUG) << "<procedure_declaration>";
 	procedureHeader(is_global);
 	procedureBody();
+	LOG(DEBUG) << "Done parsing function with local symbol table:\n"
+		<< env->getLocalStr();
+	env->pop();  // Remove scope
 }
 
 //	<procedure_header>
-//		procedure <identifier> : <type_mark> ( [<parameter_list>] )
+//		`procedure' <identifier> `:' <type_mark> `('[<parameter_list>]`)'
 void Parser::procedureHeader(const bool& is_global) {
-	LOG(DEBUG) << "Parsing <procedure_header>";
-	// Already ate TOK_RW_PROC
-	std::shared_ptr<IdToken> id_token = identifier(is_global, true);
-	if (!id_token) {
-		LOG(ERROR) << "Failed to add procedure - see logs";
+	LOG(DEBUG) << "<procedure_header>";
+	// This should not happen but just in case
+	expectToken(TOK_RW_PROC);
+	scan();
+	std::shared_ptr<IdToken> id_token = identifier();
+	if (!env->insert(id_token->getVal(), id_token, is_global)) {
+		LOG(ERROR) << "Failed to add procedure to symbol table - see logs";
 	}
-	env->push();
 	expectToken(TOK_COLON);
+	scan();
 	TypeMark tm = typeMark();
-	id_token->setTypeMark(tm);
+	if (id_token->isValid()) {
+		id_token->setTypeMark(tm);
+		id_token->setType(TOK_ID_PROC);
+	}
+	env->push();  // Add new scope
+	// Procedure must be locally visible for recursion
+	// Only add if the procedure is not global
+	if (!is_global && !env->insert(id_token->getVal(), id_token, false)) {
+		LOG(ERROR) << "Failed to add procedure to local symbol table - see logs";
+	}
 	expectToken(TOK_LPAREN);
+	scan();
 	if (matchToken(TOK_RW_VAR)) {
 		parameterList();
 	}
 	expectToken(TOK_RPAREN);
+	scan();
 }
 
 //	<parameter_list> ::=
-//		<parameter>, <parameter_list>
+//		<parameter>`,' <parameter_list>
 //	|	<parameter>
 void Parser::parameterList() {
-	LOG(DEBUG) << "Parsing <parameter_list>";
+	LOG(DEBUG) << "<parameter_list>";
 	parameter();
 	if (matchToken(TOK_COMMA)) {
+		scan();
 		parameterList();
 	}
 }
@@ -169,41 +204,53 @@ void Parser::parameterList() {
 //	<parameter> ::=
 //		<variable_declaration>
 void Parser::parameter() {
-	LOG(DEBUG) << "Parsing <parameter>";
+	LOG(DEBUG) << "<parameter>";
 	variableDeclaration(false);
 }
 
 //	<procedure_body> ::=
-//			(<declaration>;)*
-//		begin
-//			(<statement>;)*
-//		end procedure
+//			<statements>
+//		`begin'
+//			<statements>
+//		`end' `procedure'
 void Parser::procedureBody() {
-	LOG(DEBUG) << "Parsing <procedure_body>";
-	// TODO: Parse procedure body
-	env->pop();
+	LOG(DEBUG) << "<procedure_body>";
+	declarations(false);
+	expectToken(TOK_RW_BEG);
+	scan();
+	statements();
+	expectToken(TOK_RW_END);
+	scan();
+	expectToken(TOK_RW_PROC);
+	scan();
 }
 
 //	<variable_declaration> ::=
-//		variable <identifier> : <type_mark> [[ <bound> ]]
+//		`variable' <identifier> `:' <type_mark> [`['<bound>`]']
 void Parser::variableDeclaration(const bool& is_global) {
-	LOG(DEBUG) << "Parsing <variable_declaration>";
-	std::shared_ptr<IdToken> id_token = identifier(is_global, true);
+	LOG(DEBUG) << "<variable_declaration>";
+	expectToken(TOK_RW_VAR);
+	scan();
+	std::shared_ptr<IdToken> id_token = identifier();
 	expectToken(TOK_COLON);
+	scan();
 	TypeMark tm = typeMark();
 	id_token->setTypeMark(tm);
-	LOG(DEBUG) << "Declared variable " << id_token->getStr();
+	id_token->setType(TOK_ID_VAR);
 	if (matchToken(TOK_LBRACK)) {
-		bound();
-		expectToken(TOK_RBRACK);
 		LOG(DEBUG) << "Variable is an array";
+		scan();
+		id_token->setNumElements(bound());
+		expectToken(TOK_RBRACK);
+		scan();
 	}
+	LOG(DEBUG) << "Declared variable " << id_token->getStr();
 }
 
 //	<type_mark> ::=
-//		integer | float | string | bool
+//		`integer' | `float' | `string' | `bool'
 TypeMark Parser::typeMark() {
-	LOG(DEBUG) << "Parsing <type_mark>";
+	LOG(DEBUG) << "<type_mark>";
 	TypeMark tm = TYPE_NONE;
 	if (matchToken(TOK_RW_INT)) {
 		tm = TYPE_INT;
@@ -218,18 +265,26 @@ TypeMark Parser::typeMark() {
 		tm = TYPE_BOOL;
 	}
 	else {
-		LOG(ERROR) << "Expected <type_mark>; got: "
-				<< Token::getTokenName(token->getType());
-		errored = true;
+		LOG(ERROR) << "Invalid type mark: "
+				<< token->getStr();
 	}
+	scan();
 	return tm;
 }
 
 //	<bound> ::=
 //		<number>
-void Parser::bound() {
-	LOG(DEBUG) << "Parsing <bound>";
-	number();
+int Parser::bound() {
+	LOG(DEBUG) << "<bound>";
+	std::shared_ptr<Token> num_tok = number();
+	std::shared_ptr<LiteralToken<int>> bound_tok =
+			std::dynamic_pointer_cast<LiteralToken<int>>(num_tok);
+	if (bound_tok) {
+		return bound_tok->getVal();
+	} else {
+		LOG(ERROR) << "Invalid bound received: " << num_tok->getStr();
+		return 1;
+	}
 }
 
 //	<statement> ::=
@@ -238,96 +293,154 @@ void Parser::bound() {
 //	|	<loop_statement>
 //	|	<return_statement>
 void Parser::statement() {
-	LOG(DEBUG) << "Parsing <statement>";
+	LOG(DEBUG) << "<statement>";
+	if (matchToken(TOK_IDENT)) {
+		assigmentStatement();
+	} else if (matchToken(TOK_RW_IF)) {
+		ifStatement();
+	} else if (matchToken(TOK_RW_FOR)) {
+		loopStatement();
+	} else if (matchToken(TOK_RW_RET)) {
+		returnStatement();
+	} else {
+		LOG(DEBUG) << "Invalid statement: " << token->getStr();
+	}
 }
 
 //	<procedure_call> ::=
-//		<identifier>( [<argument_list>] )
+//		<identifier>`('[<argument_list>]`)'
 void Parser::procedureCall() {
-	LOG(DEBUG) << "Parsing <procedure_call>";
+	LOG(DEBUG) << "<procedure_call>";
+	identifier();
+	expectToken(TOK_LPAREN);
+	scan();
+	argumentList();
+	expectToken(TOK_RPAREN);
+	scan();
 }
 
 //	<assignment_statement> ::=
-//		<destination> := <expression>
+//		<destination> `:=' <expression>
 void Parser::assigmentStatement() {
-	LOG(DEBUG) << "Parsing <assignment_statement>";
+	LOG(DEBUG) << "<assignment_statement>";
+	destination();
+	expectToken(TOK_OP_ASS);
+	scan();
+	expression();
 }
 
 //	<destination> ::=
-//		<identifier>[[ <expression> ]]
+//		<identifier>[`['<expression>`]']
+// TODO: Check array indexing
 void Parser::destination() {
-	LOG(DEBUG) << "Parsing <destination>";
+	LOG(DEBUG) << "<destination>";
+	identifier();
+	if (matchToken(TOK_LBRACK)) {
+		scan();
+		expression();
+		expectToken(TOK_RBRACK);
+		scan();
+	}
 }
 
 //	<if_statement> ::=
-//		if ( <expression> ) then (<statement>;)*
-//		[else (<statement>;)*]
-//		end if
+//		`if' `(' <expression> `)' `then' <statements>
+//		[`else' <statements>]
+//		`end' `if'
 void Parser::ifStatement() {
-	LOG(DEBUG) << "Parsing <if_statement>";
+	LOG(DEBUG) << "<if_statement>";
+	expectToken(TOK_RW_IF);
+	scan();
+	expectToken(TOK_LPAREN);
+	scan();
+	expression();
+	expectToken(TOK_RPAREN);
+	scan();
+	expectToken(TOK_RW_THEN);
+	scan();
+	statements();
+	if (matchToken(TOK_RW_ELSE)) {
+		LOG(DEBUG) << "Else";
+		scan();
+		statements();
+	}
+	expectToken(TOK_RW_END);
+	scan();
+	expectToken(TOK_RW_IF);
+	scan();
 }
 
 //	<loop_statement> ::=
-//		for ( <assignment_statement>; <expression> )
-//			(<statement>;)*
-//		end for
+//		`for' `(' <assignment_statement>`;' <expression> `)'
+//			<statements>
+//		`end' `for'
 void Parser::loopStatement() {
-	LOG(DEBUG) << "Parsing <loop_statement>";
+	LOG(DEBUG) << "<loop_statement>";
+	expectToken(TOK_RW_FOR);
+	scan();
+	expectToken(TOK_LPAREN);
+	scan();
+	assigmentStatement();
+	expectToken(TOK_SEMICOL);
+	scan();
+	expression();
+	expectToken(TOK_RPAREN);
+	scan();
+	statements();
+	expectToken(TOK_RW_END);
+	scan();
+	expectToken(TOK_RW_FOR);
+	scan();
 }
 
 //	<return_statement> ::=
-//		return <expression>
+//		`return' <expression>
+// TODO: Maybe this should return a type mark for type checking
+// Or maybe it should be passed a token of the function?
 void Parser::returnStatement() {
-	LOG(DEBUG) << "Parsing <return_statement>";
+	LOG(DEBUG) << "<return_statement>";
+	expectToken(TOK_RW_RET);
+	scan();
+	expression();
 }
 
 //	<identifier> ::=
-//		[a-zA-Z][a-zA-Z0-9]*
-std::shared_ptr<IdToken> Parser::identifier(const bool& is_global,
-		const bool& add_symbol) {
-	LOG(DEBUG) << "Parsing <identifier>";
-	std::shared_ptr<IdToken> id_token = std::dynamic_pointer_cast<IdToken>(token);
+//		[a-zA-Z][a-zA-Z0-9_]*
+std::shared_ptr<IdToken> Parser::identifier() {
+	LOG(DEBUG) << "<identifier>";
+	std::shared_ptr<IdToken> id_token;
 	if (expectToken(TOK_IDENT)) {
-
-		// Add to symbol table if applicable
-		// TODO: Improve readability here? Trying to avoid too many nested ifs
-		if (add_symbol
-				&& !env->insert(id_token->getLexeme(), id_token, is_global)) {
-			LOG(ERROR) << "Failed to add symbol to symbol table: "
-					<< id_token->getStr();
-			errored = true;
-			id_token = nullptr;
-		}
+		id_token = std::dynamic_pointer_cast<IdToken>(token);
+		scan();
 	} else {
-
-		// Invalidate id_token if not <identifier>
-		// It is probably already null from failing the cast
-		id_token = nullptr;
+		id_token = std::shared_ptr<IdToken>(new IdToken(TOK_INVALID, ""));
 	}
 	return id_token;
 }
 
 //	<expression> ::=
-//		[not] <arith_op> <expression_prime>
+//		[`not'] <arith_op> <expression_prime>
 void Parser::expression() {
-	LOG(DEBUG) << "Parsing <expression>";
+	LOG(DEBUG) << "<expression>";
 	bool bitwise_not = matchToken(TOK_RW_NOT);
 	if (bitwise_not) {
 		LOG(DEBUG) << "Bitwise not";
+		scan();
 	}
 	arithOp();
 	expressionPrime();
 }
 
 //	<expression_prime> ::=
-//		& <arith_op> <expression_prime>
-//	|	| <arith_op> <expression_prime>
+//		`&' <arith_op> <expression_prime>
+//	|	`|' <arith_op> <expression_prime>
 //	|	epsilon
 void Parser::expressionPrime() {
-	LOG(DEBUG) << "Parsing <expression_prime>";
+	LOG(DEBUG) << "<expression_prime>";
 	std::shared_ptr<OpToken> op_token = std::dynamic_pointer_cast<OpToken>(token);
 	if (matchToken(TOK_OP_EXPR)) {
 		LOG(DEBUG) << "Bitwise " << op_token->getVal();
+		scan();
 		arithOp();
 		expressionPrime();
 	} else {
@@ -338,20 +451,22 @@ void Parser::expressionPrime() {
 //	<arith_op> ::=
 //		<relation> <arith_op_prime>
 void Parser::arithOp() {
-	LOG(DEBUG) << "Parsing <arith_op>";
+	LOG(DEBUG) << "<arith_op>";
 	relation();
 	arithOpPrime();
 }
 
 //	<arith_op_prime> ::=
-//		+ <relation> <arith_op_prime>
-//	|	- <relation> <arith_op_prime>
+//		`+' <relation> <arith_op_prime>
+//	|	`-' <relation> <arith_op_prime>
 //	|	epsilon
 void Parser::arithOpPrime() {
-	LOG(DEBUG) << "Parsing <arith_op_prime>";
-	std::shared_ptr<OpToken> op_token = std::dynamic_pointer_cast<OpToken>(token);
+	LOG(DEBUG) << "<arith_op_prime>";
 	if (matchToken(TOK_OP_ARITH)) {
-		LOG(DEBUG) << "Arithmetic " << op_token->getVal();
+		std::shared_ptr<OpToken> op_token =
+				std::dynamic_pointer_cast<OpToken>(token);
+		LOG(DEBUG) << "Arithmetic: " << op_token->getStr();
+		scan();
 		relation();
 		arithOpPrime();
 	} else {
@@ -362,69 +477,160 @@ void Parser::arithOpPrime() {
 //	<relation> ::=
 //		<term> <relation_prime>
 void Parser::relation() {
-	LOG(DEBUG) << "Parsing <relation>";
+	LOG(DEBUG) << "<relation>";
+	term();
+	relationPrime();
 }
 
 //	<relation_prime> ::=
-//		< <term> <relation_prime>
-//	|	>= <term> <relation_prime>
-//	|	<= <term> <relation_prime>
-//	|	> <term> <relation_prime>
-//	|	== <term> <relation_prime>
-//	|	!= <term> <relation_prime>
+//		`<' <term> <relation_prime>
+//	|	`>=' <term> <relation_prime>
+//	|	`<=' <term> <relation_prime>
+//	|	`>' <term> <relation_prime>
+//	|	`==' <term> <relation_prime>
+//	|	`!=' <term> <relation_prime>
 //	|	epsilon
 void Parser::relationPrime() {
-	LOG(DEBUG) << "Parsing <relation_prime>";
+	LOG(DEBUG) << "<relation_prime>";
+	if (matchToken(TOK_OP_RELAT)) {
+		std::shared_ptr<OpToken> op_token =
+				std::dynamic_pointer_cast<OpToken>(token);
+		LOG(DEBUG) << "Relation: " << op_token->getStr();
+		scan();
+		term();
+		relationPrime();
+	} else {
+		LOG(DEBUG) << "epsilon";
+	}
 }
 
 //	<term> ::=
 //		<factor> <term_prime>
 void Parser::term() {
-	LOG(DEBUG) << "Parsing <term>";
+	LOG(DEBUG) << "<term>";
+	factor();
+	termPrime();
 }
 
 //	<term_prime> ::=
-//		* <factor> <term_prime>
-//	|	/ <factor> <term_prime>
+//		`*' <factor> <term_prime>
+//	|	`/' <factor> <term_prime>
 //	|	epsilon
 void Parser::termPrime() {
-	LOG(DEBUG) << "Parsing <term_prime>";
+	LOG(DEBUG) << "<term_prime>";
+	if (matchToken(TOK_OP_TERM)) {
+		std::shared_ptr<OpToken> op_token =
+				std::dynamic_pointer_cast<OpToken>(token);
+		LOG(DEBUG) << "Term: " << op_token->getStr();
+		scan();
+		factor();
+		termPrime();
+	} else {
+		LOG(DEBUG) << "epsilon";
+	}
 }
 
 //	<factor> ::=
-//		( <expression> )
+//		`('<expression>`)'
 //	|	<procedure_call>
-//	|	[-] <name>
-//	|	[-] <number>
+//	|	[`-'] <name>
+//	|	[`-'] <number>
 //	|	<string>
-//	|	true
-//	|	false
+//	|	`true'
+//	|	`false'
 void Parser::factor() {
-	LOG(DEBUG) << "Parsing <factor>";
+	LOG(DEBUG) << "<factor>";
+	if (matchToken(TOK_OP_ARITH) && (token->getVal() == "-")) {
+		scan();
+		if (matchToken(TOK_IDENT)) {
+			name();
+		} else if (matchToken(TOK_NUM)) {
+			number();
+		} else {
+			LOG(ERROR) << "Minus sign must be followed by <name> or <number>.";
+			LOG(ERROR) << "Got: " << token->getStr();
+		}
+	} else if (matchToken(TOK_LPAREN)) {
+		scan();
+		expression();
+		expectToken(TOK_RPAREN);
+		scan();
+	} else if (matchToken(TOK_IDENT)) {
+		// TODO: How to tell procedure call vs name? Add something to id_token
+		std::shared_ptr<IdToken> id_tok = std::dynamic_pointer_cast<IdToken>(
+				env->lookup(token->getVal()));
+		if (!env->lookup(token->getVal())) LOG(DEBUG)<<"BIG SHID";
+		LOG(DEBUG) << token->getVal();
+		if (id_tok->getType() == TOK_ID_VAR) {
+			name();
+		} else if (id_tok->getType() == TOK_ID_PROC) {
+			procedureCall();
+		}
+	} else if (matchToken(TOK_NUM)) {
+		number();
+	} else if (matchToken(TOK_STR)) {
+		string();
+	} else if (matchToken(TOK_RW_TRUE)) {
+		LOG(DEBUG) << token->getStr();
+		scan();
+	} else if (matchToken(TOK_RW_FALSE)) {
+		LOG(DEBUG) << token->getStr();
+		scan();
+	} else {
+		LOG(ERROR) << "Invalid factor: " << token->getStr();
+	}
 }
 
 //	<name> ::=
-//		<identifier> [[ <expression> ]]
+//		<identifier> [`['<expression>`]']
 void Parser::name() {
-	LOG(DEBUG) << "Parsing <name>";
+	LOG(DEBUG) << "<name>";
+	identifier();
+	if (matchToken(TOK_LBRACK)) {
+		LOG(DEBUG) << "Indexing";
+		scan();
+		expression();
+		expectToken(TOK_RBRACK);
+		scan();
+	}
 }
 
 //	<argument_list> ::=
-//		<expression> , <argument_list>
+//		<expression> `,' <argument_list>
 //	|	<expression>
 void Parser::argumentList() {
-	LOG(DEBUG) << "Parsing <argument_list>";
+	LOG(DEBUG) << "<argument_list>";
+	expression();
+	if (matchToken(TOK_COMMA)) {
+		scan();
+		argumentList();
+	}
 }
 
 //	<number> ::=
 //		[0-9][0-9_]*[.[0-9_]*]
-void Parser::number() {
-	LOG(DEBUG) << "Parsing <number>";
-	expectToken(TOK_NUM);
+std::shared_ptr<Token> Parser::number() {
+	LOG(DEBUG) << "<number>";
+	std::shared_ptr<Token> num_tok = std::shared_ptr<Token>(new Token());
+	if (expectToken(TOK_NUM)) {
+		num_tok = token;
+	}
+	scan();
+	return num_tok;
 }
 
 //	<string> ::=
-//		"[^"]*"
-void Parser::string() {
-	LOG(DEBUG) << "Parsing <string>";
+//		`"'[^"]*`"'
+std::shared_ptr<LiteralToken<std::string>> Parser::string() {
+	LOG(DEBUG) << "<string>";
+	std::shared_ptr<LiteralToken<std::string>> str_tok =
+			std::shared_ptr<LiteralToken<std::string>>(
+				new LiteralToken<std::string>(TOK_STR, "", LIT_STR));
+	if (expectToken(TOK_STR)) {
+		str_tok = std::dynamic_pointer_cast<LiteralToken<std::string>>(token);
+	} else {
+		LOG(ERROR) << "Using empty string";
+	}
+	scan();
+	return str_tok;
 }

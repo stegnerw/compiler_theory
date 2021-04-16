@@ -9,6 +9,8 @@
 #include <sstream>
 #include <string>
 
+#include "log.h"
+
 enum TokenType {
 	TOK_INVALID = 0, // Invalid token - the default
 	TOK_RW_PROG, // program
@@ -36,6 +38,8 @@ enum TokenType {
 	TOK_OP_ASS, // :=
 	TOK_OP_TERM, // * /
 	TOK_IDENT, // Identifiers
+	TOK_ID_VAR, // Identifier for a variable
+	TOK_ID_PROC, // Identifier for a procedure
 	TOK_NUM, // Numbers (float and int)
 	TOK_STR, // String literals: "[^"]"
 	TOK_PERIOD, // .
@@ -56,8 +60,16 @@ enum TypeMark {
 	TYPE_FLT,
 	TYPE_STR,
 	TYPE_BOOL,
-	TYPE_PROC,
 	NUM_TYPE_ENUMS,
+};
+
+enum LiteralType {
+	LIT_NONE = 0,
+	LIT_INT,
+	LIT_FLT,
+	LIT_STR,
+	LIT_BOOL,
+	NUM_LIT_ENUMS,
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -66,22 +78,28 @@ enum TypeMark {
 ////////////////////////////////////////////////////////////////////////////////
 class Token {
 public:
-	Token() : type(TOK_INVALID) {}
-	Token(const TokenType& t) : type(t) {}
+	Token() : type(TOK_INVALID), val("") {}
+	Token(const TokenType& t, const std::string& v) : type(t), val(v) {}
 	virtual ~Token() {}
 	virtual std::string const getStr() {
 		std::stringstream ss;
-		ss << "{ " << token_names[type] << " }";
+		ss << "{ " << token_names[type] << ", " << val << " }";
 		return ss.str();
 	}
 	TokenType const getType() { return type; }
+	void setType(const TokenType& t) { type = t; }
+	std::string const getVal() { return val; }
 	static std::string getTokenName(const TokenType& t) {
 		return token_names[t];
 	}
+	bool isValid() { return type == TOK_INVALID; }
 
 protected:
 	static const std::string token_names[NUM_TOK_ENUMS];
+	static const std::string type_mark_names[NUM_TYPE_ENUMS];
+	static const std::string literal_type_names[NUM_LIT_ENUMS];
 	TokenType type;
+	std::string val;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -89,16 +107,19 @@ protected:
 ////////////////////////////////////////////////////////////////////////////////
 class OpToken : public Token {
 public:
-	OpToken(const TokenType& t, const std::string& v) : val(v) { type = t; }
-	std::string getVal() { return val; }
+	OpToken(const TokenType& t, const std::string& v) {
+		type = t;
+		val = v;
+	}
+	//std::string getVal() { return val; }
 	std::string const getStr() {
 		std::stringstream ss;
 		ss << "{ " << token_names[type] << ", " << val << " }";
 		return ss.str();
 	}
 
-private:
-	std::string val;
+//private:
+	//std::string val;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -108,24 +129,32 @@ private:
 class IdToken : public Token {
 public:
 	IdToken(const TokenType& t, const std::string& lex) :
-			lexeme(lex),
-			type_mark(TYPE_NONE) {
+			type_mark(TYPE_NONE),
+			num_elements(0) {
 		type = t;
 	}
 	std::string const getStr() {
 		std::stringstream ss;
-		ss << "{ " << token_names[type] << ", " << lexeme << ", "
-			<< type_mark_names[type_mark] << " }";
+		ss << "{ " << token_names[type] << ", " << val << ", "
+			<< type_mark_names[type_mark] << ", " << num_elements << " }";
 		return ss.str();
 	}
 	TypeMark getTypeMark() { return type_mark; }
 	void setTypeMark(const TypeMark& tm) { type_mark = tm; }
-	std::string getLexeme() { return lexeme; }
+	bool setNumElements(const int& n) {
+		if (n >= 1) {
+			num_elements = n;
+			return true;
+		} else {
+			LOG(ERROR) << "Could not set number of elements to: " << n;
+			return false;
+		}
+	}
+	int getNumElements() { return num_elements; }
 
 private:
-	static const std::string type_mark_names[NUM_TYPE_ENUMS];
-	std::string lexeme;
 	TypeMark type_mark;
+	int num_elements;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -135,16 +164,20 @@ private:
 template <class T>
 class LiteralToken : public Token {
 public:
-	LiteralToken<T>(const TokenType& t, const T& v) : val(v) { type = t; }
+	LiteralToken<T>(const TokenType& t, const T& v, const LiteralType& lt) :
+		val(v), literal_type(lt) { type = t; }
 	T const getVal() { return val; }
+	LiteralType getLiteralType() { return literal_type; }
 	std::string const getStr() {
 		std::stringstream ss;
-		ss << "{ " << token_names[type] << ", " << val << " }";
+		ss << "{ " << token_names[type] << ", " << val << ", "
+			<< literal_type_names[literal_type] << " }";
 		return ss.str();
 	}
 
 private:
 	T val;
+	LiteralType literal_type;
 };
 
 #endif // TOKEN_H

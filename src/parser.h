@@ -15,10 +15,10 @@ public:
 	Parser();
 	bool init(const std::string&);
 	bool parse();  // program
+
 private:
 	std::shared_ptr<Environment> env;
 	Scanner scanner;
-	bool errored;
 	std::shared_ptr<Token> token;
 	//std::shared_ptr<Token> next_token;
 	void scan();
@@ -26,6 +26,8 @@ private:
 	bool expectToken(const TokenType&);
 	void programHeader();
 	void programBody();
+	void declarations(bool);
+	void statements();
 	void declaration(bool);
 	void procedureDeclaration(const bool&);
 	void procedureHeader(const bool&);
@@ -34,7 +36,7 @@ private:
 	void procedureBody();
 	void variableDeclaration(const bool&);
 	TypeMark typeMark();
-	void bound();
+	int bound();
 	void statement();
 	void procedureCall();
 	void assigmentStatement();
@@ -42,7 +44,7 @@ private:
 	void ifStatement();
 	void loopStatement();
 	void returnStatement();
-	std::shared_ptr<IdToken> identifier(const bool&, const bool&);
+	std::shared_ptr<IdToken> identifier();
 	void expression();
 	void expressionPrime();
 	void arithOp();
@@ -54,8 +56,8 @@ private:
 	void factor();
 	void name();
 	void argumentList();
-	void number();
-	void string();
+	std::shared_ptr<Token> number();
+	std::shared_ptr<LiteralToken<std::string>> string();
 };
 
 #endif // PARSER_H

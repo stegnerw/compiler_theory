@@ -1,7 +1,9 @@
 #include "symbol_table.h"
+
+#include <memory>
+#include <sstream>
 #include <string>
 #include <unordered_map>
-#include <memory>
 #include "token.h"
 #include "log.h"
 
@@ -20,15 +22,22 @@ std::shared_ptr<Token> SymbolTable::lookup(const std::string& key) {
 }
 
 // Environment checks for reserved words
-std::shared_ptr<Token> SymbolTable::insert(const std::string& key,
+bool SymbolTable::insert(const std::string& key,
 		std::shared_ptr<Token> t) {
-	std::shared_ptr<Token> new_token = lookup(key);
-	if (!new_token) {
+	bool success = false;
+	std::shared_ptr<Token> token = lookup(key);
+	if (!token) {
 		symbol_map[key] = t;
-		new_token = t;
 	} else {
-		LOG(WARN) << "Attempt to add duplicate symbol: " << key;
-		new_token = nullptr;
+		LOG(WARN) << "Symbol already exists with name: " << key;
 	}
-	return new_token;
+	return success;
+}
+
+std::string SymbolTable::getStr() {
+	std::stringstream ss;
+	for (auto it : symbol_map) {
+		ss << it.first << ": " << it.second->getStr() << "\n";
+	}
+	return ss.str();
 }

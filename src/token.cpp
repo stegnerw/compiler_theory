@@ -33,7 +33,9 @@ const std::string Token::token_names[NUM_TOK_ENUMS] = {
 	"ASSIGNMENT",
 	"TERM",
 	"IDENTIFIER",
-	"NUMBER",
+	"VARIABLE_IDENTIFIER",
+	"VARIABLE_PROCEDURE",
+	"LITERAL_NUMBER",
 	"LITERAL_STRING",
 	"PERIOD",
 	"COMMA",
@@ -46,11 +48,18 @@ const std::string Token::token_names[NUM_TOK_ENUMS] = {
 	"END_OF_FILE"
 };
 
-const std::string IdToken::type_mark_names[NUM_TYPE_ENUMS] = {
+const std::string Token::type_mark_names[NUM_TYPE_ENUMS] = {
 	"NONE",
 	"INT",
 	"FLT",
 	"STR",
 	"BOOL",
-	"PROC"
+};
+
+const std::string Token::literal_type_names[NUM_LIT_ENUMS] = {
+	"NONE",
+	"INT",
+	"FLT",
+	"STR",
+	"BOOL",
 };
