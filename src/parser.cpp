@@ -662,7 +662,7 @@ std::shared_ptr<LiteralToken<std::string>> Parser::string() {
 	LOG(DEBUG) << "<string>";
 	std::shared_ptr<LiteralToken<std::string>> str_tok =
 			std::shared_ptr<LiteralToken<std::string>>(
-				new LiteralToken<std::string>(TOK_STR, "", LIT_STR));
+				new LiteralToken<std::string>(TOK_STR, "", TYPE_STR));
 	if (expectToken(TOK_STR)) {
 		str_tok = std::dynamic_pointer_cast<LiteralToken<std::string>>(token);
 	} else {

@@ -63,15 +63,6 @@ enum TypeMark {
 	NUM_TYPE_ENUMS,
 };
 
-enum LiteralType {
-	LIT_NONE = 0,
-	LIT_INT,
-	LIT_FLT,
-	LIT_STR,
-	LIT_BOOL,
-	NUM_LIT_ENUMS,
-};
-
 ////////////////////////////////////////////////////////////////////////////////
 // Base token class
 // Reserve words, invalid, and punctuation
@@ -97,7 +88,6 @@ public:
 protected:
 	static const std::string token_names[NUM_TOK_ENUMS];
 	static const std::string type_mark_names[NUM_TYPE_ENUMS];
-	static const std::string literal_type_names[NUM_LIT_ENUMS];
 	TokenType type;
 	std::string val;
 };
@@ -165,20 +155,20 @@ private:
 template <class T>
 class LiteralToken : public Token {
 public:
-	LiteralToken<T>(const TokenType& t, const T& v, const LiteralType& lt) :
-		val(v), literal_type(lt) { type = t; }
+	LiteralToken<T>(const TokenType& t, const T& v, const TypeMark& tm) :
+		val(v), type_mark(tm) { type = t; }
 	T const getVal() { return val; }
-	LiteralType getLiteralType() { return literal_type; }
+	TypeMark getTypeMark() { return type_mark; }
 	std::string const getStr() {
 		std::stringstream ss;
 		ss << "{ " << token_names[type] << ", " << val << ", "
-			<< literal_type_names[literal_type] << " }";
+			<< type_mark_names[type_mark] << " }";
 		return ss.str();
 	}
 
 private:
 	T val;
-	LiteralType literal_type;
+	TypeMark type_mark;
 };
 
 #endif // TOKEN_H

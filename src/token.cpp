@@ -55,11 +55,3 @@ const std::string Token::type_mark_names[NUM_TYPE_ENUMS] = {
 	"STR",
 	"BOOL",
 };
-
-const std::string Token::literal_type_names[NUM_LIT_ENUMS] = {
-	"NONE",
-	"INT",
-	"FLT",
-	"STR",
-	"BOOL",
-};
