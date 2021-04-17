@@ -341,7 +341,8 @@ void Parser::assigmentStatement() {
 //	<destination> ::=
 //		<identifier>[`['<expression>`]']
 // TODO: Check array indexing
-void Parser::destination() {
+// TODO: Type checking
+TypeMark Parser::destination() {
 	LOG(DEBUG) << "<destination>";
 	identifier();
 	if (matchToken(TOK_LBRACK)) {
@@ -350,6 +351,7 @@ void Parser::destination() {
 		expectToken(TOK_RBRACK);
 		scan();
 	}
+	return TYPE_NONE;
 }
 
 //	<if_statement> ::=
@@ -404,13 +406,13 @@ void Parser::loopStatement() {
 
 //	<return_statement> ::=
 //		`return' <expression>
-// TODO: Maybe this should return a type mark for type checking
-// Or maybe it should be passed a token of the function?
-void Parser::returnStatement() {
+// TODO: Type checking
+TypeMark Parser::returnStatement() {
 	LOG(DEBUG) << "<return_statement>";
 	expectToken(TOK_RW_RET);
 	scan();
 	expression();
+	return TYPE_NONE;
 }
 
 //	<identifier> ::=
@@ -429,7 +431,8 @@ std::shared_ptr<IdToken> Parser::identifier() {
 
 //	<expression> ::=
 //		[`not'] <arith_op> <expression_prime>
-void Parser::expression() {
+// TODO: Type checking
+TypeMark Parser::expression() {
 	LOG(DEBUG) << "<expression>";
 	bool bitwise_not = matchToken(TOK_RW_NOT);
 	if (bitwise_not) {
@@ -438,57 +441,63 @@ void Parser::expression() {
 	}
 	arithOp();
 	expressionPrime();
+	return TYPE_NONE;
 }
 
 //	<expression_prime> ::=
 //		`&' <arith_op> <expression_prime>
 //	|	`|' <arith_op> <expression_prime>
 //	|	epsilon
-void Parser::expressionPrime() {
+// TODO: Type checking
+TypeMark Parser::expressionPrime() {
 	LOG(DEBUG) << "<expression_prime>";
-	std::shared_ptr<OpToken> op_token = std::dynamic_pointer_cast<OpToken>(token);
 	if (matchToken(TOK_OP_EXPR)) {
-		LOG(DEBUG) << "Bitwise " << op_token->getVal();
+		LOG(DEBUG) << "Bitwise " << token->getVal();
 		scan();
 		arithOp();
 		expressionPrime();
 	} else {
 		LOG(DEBUG) << "epsilon";
 	}
+	return TYPE_NONE;
 }
 
 //	<arith_op> ::=
 //		<relation> <arith_op_prime>
-void Parser::arithOp() {
+// TODO: Type checking
+TypeMark Parser::arithOp() {
 	LOG(DEBUG) << "<arith_op>";
 	relation();
 	arithOpPrime();
+	return TYPE_NONE;
 }
 
 //	<arith_op_prime> ::=
 //		`+' <relation> <arith_op_prime>
 //	|	`-' <relation> <arith_op_prime>
 //	|	epsilon
-void Parser::arithOpPrime() {
+// TODO: Type checking
+TypeMark Parser::arithOpPrime() {
 	LOG(DEBUG) << "<arith_op_prime>";
 	if (matchToken(TOK_OP_ARITH)) {
-		std::shared_ptr<OpToken> op_token =
-				std::dynamic_pointer_cast<OpToken>(token);
-		LOG(DEBUG) << "Arithmetic: " << op_token->getStr();
+		LOG(DEBUG) << "Arithmetic: " << token->getStr();
 		scan();
 		relation();
 		arithOpPrime();
 	} else {
 		LOG(DEBUG) << "epsilon";
 	}
+	return TYPE_NONE;
 }
 
 //	<relation> ::=
 //		<term> <relation_prime>
-void Parser::relation() {
+// TODO: Type checking
+TypeMark Parser::relation() {
 	LOG(DEBUG) << "<relation>";
 	term();
 	relationPrime();
+	return TYPE_NONE;
 }
 
 //	<relation_prime> ::=
@@ -499,44 +508,46 @@ void Parser::relation() {
 //	|	`==' <term> <relation_prime>
 //	|	`!=' <term> <relation_prime>
 //	|	epsilon
-void Parser::relationPrime() {
+// TODO: Type checking
+TypeMark Parser::relationPrime() {
 	LOG(DEBUG) << "<relation_prime>";
 	if (matchToken(TOK_OP_RELAT)) {
-		std::shared_ptr<OpToken> op_token =
-				std::dynamic_pointer_cast<OpToken>(token);
-		LOG(DEBUG) << "Relation: " << op_token->getStr();
+		LOG(DEBUG) << "Relation: " << token->getStr();
 		scan();
 		term();
 		relationPrime();
 	} else {
 		LOG(DEBUG) << "epsilon";
 	}
+	return TYPE_NONE;
 }
 
 //	<term> ::=
 //		<factor> <term_prime>
-void Parser::term() {
+// TODO: Type checking
+TypeMark Parser::term() {
 	LOG(DEBUG) << "<term>";
 	factor();
 	termPrime();
+	return TYPE_NONE;
 }
 
 //	<term_prime> ::=
 //		`*' <factor> <term_prime>
 //	|	`/' <factor> <term_prime>
 //	|	epsilon
-void Parser::termPrime() {
+// TODO: Type checking
+TypeMark Parser::termPrime() {
 	LOG(DEBUG) << "<term_prime>";
 	if (matchToken(TOK_OP_TERM)) {
-		std::shared_ptr<OpToken> op_token =
-				std::dynamic_pointer_cast<OpToken>(token);
-		LOG(DEBUG) << "Term: " << op_token->getStr();
+		LOG(DEBUG) << "Term: " << token->getStr();
 		scan();
 		factor();
 		termPrime();
 	} else {
 		LOG(DEBUG) << "epsilon";
 	}
+	return TYPE_NONE;
 }
 
 //	<factor> ::=
@@ -547,8 +558,10 @@ void Parser::termPrime() {
 //	|	<string>
 //	|	`true'
 //	|	`false'
-void Parser::factor() {
+// TODO: Type checking
+TypeMark Parser::factor() {
 	LOG(DEBUG) << "<factor>";
+	TypeMark tm = TYPE_NONE;
 
 	// Negative sign can only happen before <number> and <name>
 	if (matchToken(TOK_OP_ARITH) && (token->getVal() == "-")) {
@@ -616,20 +629,26 @@ void Parser::factor() {
 	} else {
 		LOG(ERROR) << "Invalid factor: " << token->getStr();
 	}
+	return tm;
 }
 
 //	<name> ::=
 //		<identifier> [`['<expression>`]']
-void Parser::name() {
+// TODO: Array bounds checking
+TypeMark Parser::name() {
 	LOG(DEBUG) << "<name>";
-	identifier();
+	std::shared_ptr<IdToken> id_tok = identifier();
+	TypeMark tm = id_tok->getTypeMark();
 	if (matchToken(TOK_LBRACK)) {
+		// TODO: Check if it's actually an array
 		LOG(DEBUG) << "Indexing";
 		scan();
 		expression();
 		expectToken(TOK_RBRACK);
 		scan();
 	}
+	// TODO: How to return the index/ID?
+	return tm;
 }
 
 //	<argument_list> ::=

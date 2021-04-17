@@ -75,11 +75,11 @@ std::shared_ptr<Token> Scanner::getToken() {
 		// Operators (Assignment handles colon)
 		case C_EXPR:
 			v += static_cast<char>(curr_c);
-			tok = std::shared_ptr<Token>(new OpToken(TOK_OP_EXPR, v));
+			tok = std::shared_ptr<Token>(new Token(TOK_OP_EXPR, v));
 			break;
 		case C_ARITH:
 			v += static_cast<char>(curr_c);
-			tok = std::shared_ptr<Token>(new OpToken(TOK_OP_ARITH, v));
+			tok = std::shared_ptr<Token>(new Token(TOK_OP_ARITH, v));
 			break;
 		case C_RELAT:
 			v += static_cast<char>(curr_c);
@@ -87,21 +87,21 @@ std::shared_ptr<Token> Scanner::getToken() {
 				nextChar();
 				v += static_cast<char>(curr_c);
 			}
-			tok = std::shared_ptr<Token>(new OpToken(TOK_OP_RELAT, v));
+			tok = std::shared_ptr<Token>(new Token(TOK_OP_RELAT, v));
 			break;
 		case C_COLON:
 			v += static_cast<char>(curr_c);
 			if (next_c == '=') {
 				nextChar();
 				v += static_cast<char>(curr_c);
-				tok = std::shared_ptr<Token>(new OpToken(TOK_OP_ASS, v));
+				tok = std::shared_ptr<Token>(new Token(TOK_OP_ASS, v));
 			} else {
 				tok = std::shared_ptr<Token>(new Token(TOK_COLON, ":"));
 			}
 			break;
 		case C_TERM:
 			v += static_cast<char>(curr_c);
-			tok = std::shared_ptr<Token>(new OpToken(TOK_OP_TERM, v));
+			tok = std::shared_ptr<Token>(new Token(TOK_OP_TERM, v));
 			break;
 		// Numerical constant
 		case C_DIGIT:
