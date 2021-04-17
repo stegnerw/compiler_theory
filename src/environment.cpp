@@ -5,6 +5,7 @@
 #include "token.h"
 
 Environment::Environment() {
+
 	// Populate reserved words in global symbol table
 	global_symbol_table.insert("program",
 		std::shared_ptr<Token>(new Token(TOK_RW_PROG, "program")));
@@ -44,6 +45,56 @@ Environment::Environment() {
 		std::shared_ptr<Token>(new Token(TOK_RW_TRUE, "true")));
 	global_symbol_table.insert("false",
 		std::shared_ptr<Token>(new Token(TOK_RW_FALSE, "false")));
+
+	// Add builtin functions to the global scope
+	std::shared_ptr<IdToken> builtin_tok;
+
+	// getBool() : bool value
+	builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_ID_PROC, "getbool"));
+	builtin_tok->setTypeMark(TYPE_BOOL);
+	global_symbol_table.insert(builtin_tok->getVal(), builtin_tok);
+
+	// getInteger() : integer value
+	builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_ID_PROC,
+			"getinteger"));
+	builtin_tok->setTypeMark(TYPE_INT);
+	global_symbol_table.insert(builtin_tok->getVal(), builtin_tok);
+
+	// getFloat() : float value
+	builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_ID_PROC, "getfloat"));
+	builtin_tok->setTypeMark(TYPE_FLT);
+	global_symbol_table.insert(builtin_tok->getVal(), builtin_tok);
+
+	// getString() : string value
+	builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_ID_PROC, "getstring"));
+	builtin_tok->setTypeMark(TYPE_STR);
+	global_symbol_table.insert(builtin_tok->getVal(), builtin_tok);
+
+	// putBool(bool value) : bool
+	builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_ID_PROC, "putbool"));
+	builtin_tok->setTypeMark(TYPE_BOOL);
+	global_symbol_table.insert(builtin_tok->getVal(), builtin_tok);
+
+	// putInteger(integer value) : bool
+	builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_ID_PROC,
+			"putinteger"));
+	builtin_tok->setTypeMark(TYPE_BOOL);
+	global_symbol_table.insert(builtin_tok->getVal(), builtin_tok);
+
+	// putFloat(float value) : bool
+	builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_ID_PROC, "putfloat"));
+	builtin_tok->setTypeMark(TYPE_BOOL);
+	global_symbol_table.insert(builtin_tok->getVal(), builtin_tok);
+
+	// putString(string value) : bool
+	builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_ID_PROC, "putstring"));
+	builtin_tok->setTypeMark(TYPE_BOOL);
+	global_symbol_table.insert(builtin_tok->getVal(), builtin_tok);
+
+	// sqrt(integer value) : float
+	builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_ID_PROC, "sqrt"));
+	builtin_tok->setTypeMark(TYPE_FLT);
+	global_symbol_table.insert(builtin_tok->getVal(), builtin_tok);
 }
 
 std::shared_ptr<Token> Environment::lookup(const std::string& key) {

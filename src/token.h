@@ -92,7 +92,7 @@ public:
 	static std::string getTokenName(const TokenType& t) {
 		return token_names[t];
 	}
-	bool isValid() { return type == TOK_INVALID; }
+	bool isValid() { return type != TOK_INVALID; }
 
 protected:
 	static const std::string token_names[NUM_TOK_ENUMS];
@@ -128,10 +128,11 @@ public:
 ////////////////////////////////////////////////////////////////////////////////
 class IdToken : public Token {
 public:
-	IdToken(const TokenType& t, const std::string& lex) :
+	IdToken(const TokenType& t, const std::string& v) :
 			type_mark(TYPE_NONE),
 			num_elements(0) {
 		type = t;
+		val = v;
 	}
 	std::string const getStr() {
 		std::stringstream ss;

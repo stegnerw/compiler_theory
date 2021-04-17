@@ -160,6 +160,7 @@ void Parser::procedureDeclaration(const bool& is_global) {
 //		`procedure' <identifier> `:' <type_mark> `('[<parameter_list>]`)'
 void Parser::procedureHeader(const bool& is_global) {
 	LOG(DEBUG) << "<procedure_header>";
+
 	// This should not happen but just in case
 	expectToken(TOK_RW_PROC);
 	scan();
@@ -175,6 +176,7 @@ void Parser::procedureHeader(const bool& is_global) {
 		id_token->setType(TOK_ID_PROC);
 	}
 	env->push();  // Add new scope
+
 	// Procedure must be locally visible for recursion
 	// Only add if the procedure is not global
 	if (!is_global && !env->insert(id_token->getVal(), id_token, false)) {
@@ -232,11 +234,16 @@ void Parser::variableDeclaration(const bool& is_global) {
 	expectToken(TOK_RW_VAR);
 	scan();
 	std::shared_ptr<IdToken> id_token = identifier();
+	if (!env->insert(id_token->getVal(), id_token, is_global)) {
+		LOG(ERROR) << "Failed to add variable to symbol table - see logs";
+	}
 	expectToken(TOK_COLON);
 	scan();
 	TypeMark tm = typeMark();
-	id_token->setTypeMark(tm);
-	id_token->setType(TOK_ID_VAR);
+	if (id_token->isValid()) {
+		id_token->setTypeMark(tm);
+		id_token->setType(TOK_ID_VAR);
+	}
 	if (matchToken(TOK_LBRACK)) {
 		LOG(DEBUG) << "Variable is an array";
 		scan();
@@ -314,7 +321,9 @@ void Parser::procedureCall() {
 	identifier();
 	expectToken(TOK_LPAREN);
 	scan();
-	argumentList();
+	if (!matchToken(TOK_RPAREN)) {
+		argumentList();
+	}
 	expectToken(TOK_RPAREN);
 	scan();
 }
@@ -540,42 +549,70 @@ void Parser::termPrime() {
 //	|	`false'
 void Parser::factor() {
 	LOG(DEBUG) << "<factor>";
+
+	// Negative sign can only happen before <number> and <name>
 	if (matchToken(TOK_OP_ARITH) && (token->getVal() == "-")) {
 		scan();
 		if (matchToken(TOK_IDENT)) {
-			name();
+			std::shared_ptr<IdToken> id_tok = std::dynamic_pointer_cast<IdToken>(
+					env->lookup(token->getVal()));
+			if (!id_tok) {
+				LOG(ERROR) << "Identifier not declared in this scope: "
+						<< token->getStr();
+			} else if (id_tok->getType() == TOK_ID_VAR) {
+				name();
+			} else {
+				LOG(ERROR) << "Expected variable; got: " << token->getStr();
+			}
 		} else if (matchToken(TOK_NUM)) {
 			number();
 		} else {
 			LOG(ERROR) << "Minus sign must be followed by <name> or <number>.";
 			LOG(ERROR) << "Got: " << token->getStr();
 		}
+
+	// `('<expression>`)'
 	} else if (matchToken(TOK_LPAREN)) {
 		scan();
 		expression();
 		expectToken(TOK_RPAREN);
 		scan();
+
+	// <procedure_call> or <name>
 	} else if (matchToken(TOK_IDENT)) {
 		// TODO: How to tell procedure call vs name? Add something to id_token
 		std::shared_ptr<IdToken> id_tok = std::dynamic_pointer_cast<IdToken>(
 				env->lookup(token->getVal()));
-		if (!env->lookup(token->getVal())) LOG(DEBUG)<<"BIG SHID";
-		LOG(DEBUG) << token->getVal();
-		if (id_tok->getType() == TOK_ID_VAR) {
+		if (!id_tok) {
+			LOG(ERROR) << "Identifier not declared in this scope: "
+					<< token->getStr();
+		} else if (id_tok->getType() == TOK_ID_VAR) {
 			name();
 		} else if (id_tok->getType() == TOK_ID_PROC) {
 			procedureCall();
+		} else {
+			LOG(ERROR) << "Unknown identifier: " << id_tok->getStr();
 		}
+
+	// <number>
 	} else if (matchToken(TOK_NUM)) {
 		number();
+
+	// <string>
 	} else if (matchToken(TOK_STR)) {
 		string();
+
+	// `true'
 	} else if (matchToken(TOK_RW_TRUE)) {
 		LOG(DEBUG) << token->getStr();
 		scan();
+
+	// `false'
 	} else if (matchToken(TOK_RW_FALSE)) {
 		LOG(DEBUG) << token->getStr();
 		scan();
+
+	// Something went wrong
 	} else {
 		LOG(ERROR) << "Invalid factor: " << token->getStr();
 	}
