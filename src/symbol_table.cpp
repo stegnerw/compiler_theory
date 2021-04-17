@@ -25,8 +25,8 @@ std::shared_ptr<Token> SymbolTable::lookup(const std::string& key) {
 bool SymbolTable::insert(const std::string& key,
 		std::shared_ptr<Token> t) {
 	bool success = false;
-	std::shared_ptr<Token> token = lookup(key);
-	if (!token) {
+	std::shared_ptr<Token> tok = lookup(key);
+	if (!tok) {
 		symbol_map[key] = t;
 		success = true;
 	} else {

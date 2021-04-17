@@ -136,9 +136,9 @@ bool Environment::insert(const std::string& key,
 
 bool Environment::isReserved(const std::string& key) {
 	bool is_reserved = false;
-	std::shared_ptr<Token> temp_token = global_symbol_table.lookup(key);
-	if (temp_token && (temp_token->getType() >= TOK_RW_PROG)
-			&& (temp_token->getType() <= TOK_RW_FALSE)) {
+	std::shared_ptr<Token> temp_tok = global_symbol_table.lookup(key);
+	if (temp_tok && (temp_tok->getType() >= TOK_RW_PROG)
+			&& (temp_tok->getType() <= TOK_RW_FALSE)) {
 		is_reserved = true;
 	}
 	return is_reserved;

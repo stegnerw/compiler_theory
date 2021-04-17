@@ -19,8 +19,8 @@ public:
 private:
 	std::shared_ptr<Environment> env;
 	Scanner scanner;
-	std::shared_ptr<Token> token;
-	//std::shared_ptr<Token> next_token;
+	std::shared_ptr<Token> tok;
+	//std::shared_ptr<Token> next_tok;
 	void scan();
 	bool matchToken(const TokenType&);
 	bool expectToken(const TokenType&);

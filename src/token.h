@@ -74,19 +74,19 @@ public:
 	virtual ~Token() {}
 	virtual std::string const getStr() {
 		std::stringstream ss;
-		ss << "{ " << token_names[type] << ", " << val << " }";
+		ss << "{ " << tok_names[type] << ", " << val << " }";
 		return ss.str();
 	}
 	TokenType const getType() { return type; }
 	void setType(const TokenType& t) { type = t; }
 	std::string const getVal() { return val; }
 	static std::string getTokenName(const TokenType& t) {
-		return token_names[t];
+		return tok_names[t];
 	}
 	bool isValid() { return type != TOK_INVALID; }
 
 protected:
-	static const std::string token_names[NUM_TOK_ENUMS];
+	static const std::string tok_names[NUM_TOK_ENUMS];
 	static const std::string type_mark_names[NUM_TYPE_ENUMS];
 	TokenType type;
 	std::string val;
@@ -106,7 +106,7 @@ public:
 	}
 	std::string const getStr() {
 		std::stringstream ss;
-		ss << "{ " << token_names[type] << ", " << val << ", "
+		ss << "{ " << tok_names[type] << ", " << val << ", "
 			<< type_mark_names[type_mark] << ", " << num_elements << " }";
 		return ss.str();
 	}
@@ -141,7 +141,7 @@ public:
 	TypeMark getTypeMark() { return type_mark; }
 	std::string const getStr() {
 		std::stringstream ss;
-		ss << "{ " << token_names[type] << ", " << val << ", "
+		ss << "{ " << tok_names[type] << ", " << val << ", "
 			<< type_mark_names[type_mark] << " }";
 		return ss.str();
 	}

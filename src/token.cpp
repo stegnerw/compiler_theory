@@ -6,7 +6,7 @@
 // Name lists
 ////////////////////////////////////////////////////////////////////////////////
 
-const std::string Token::token_names[NUM_TOK_ENUMS] = {
+const std::string Token::tok_names[NUM_TOK_ENUMS] = {
 	"INVALID",
 	"PROGRAM",
 	"IS",

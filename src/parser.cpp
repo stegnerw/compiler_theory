@@ -43,13 +43,13 @@ bool Parser::parse() {
 
 void Parser::scan() {
 	do {
-		token = scanner.getToken();
-	} while(token->getType() == TOK_INVALID);
+		tok = scanner.getToken();
+	} while(tok->getType() == TOK_INVALID);
 }
 
 bool Parser::matchToken(const TokenType& t) {
 	LOG(DEBUG) << "Matching " << Token::getTokenName(t);
-	if (token->getType() == t) {
+	if (tok->getType() == t) {
 		LOG(DEBUG) << "Match success";
 		return true;
 	}
@@ -64,7 +64,7 @@ bool Parser::expectToken(const TokenType& t) {
 		return true;
 	}
 	LOG(ERROR) << "Expected " << Token::getTokenName(t)
-			<< ", got " << token->getStr() << " instead";
+			<< ", got " << tok->getStr() << " instead";
 	return false;
 }
 
@@ -138,7 +138,7 @@ void Parser::declaration(bool is_global) {
 	} else if(matchToken(TOK_RW_VAR)) {
 		variableDeclaration(is_global);
 	} else {
-		LOG(ERROR) << "Unexpected token: " << token->getStr();
+		LOG(ERROR) << "Unexpected token: " << tok->getStr();
 		LOG(ERROR) << "Expected: " << Token::getTokenName(TOK_RW_PROC) << " or "
 				<< Token::getTokenName(TOK_RW_VAR);
 		scan();  // TODO: Do I want to scan here? Other ways to handle errors?
@@ -164,22 +164,22 @@ void Parser::procedureHeader(const bool& is_global) {
 	// This should not happen but just in case
 	expectToken(TOK_RW_PROC);
 	scan();
-	std::shared_ptr<IdToken> id_token = identifier();
-	if (!env->insert(id_token->getVal(), id_token, is_global)) {
+	std::shared_ptr<IdToken> id_tok = identifier();
+	if (!env->insert(id_tok->getVal(), id_tok, is_global)) {
 		LOG(ERROR) << "Failed to add procedure to symbol table - see logs";
 	}
 	expectToken(TOK_COLON);
 	scan();
 	TypeMark tm = typeMark();
-	if (id_token->isValid()) {
-		id_token->setTypeMark(tm);
-		id_token->setType(TOK_ID_PROC);
+	if (id_tok->isValid()) {
+		id_tok->setTypeMark(tm);
+		id_tok->setType(TOK_ID_PROC);
 	}
 	env->push();  // Add new scope
 
 	// Procedure must be locally visible for recursion
 	// Only add if the procedure is not global
-	if (!is_global && !env->insert(id_token->getVal(), id_token, false)) {
+	if (!is_global && !env->insert(id_tok->getVal(), id_tok, false)) {
 		LOG(ERROR) << "Failed to add procedure to local symbol table - see logs";
 	}
 	expectToken(TOK_LPAREN);
@@ -233,25 +233,25 @@ void Parser::variableDeclaration(const bool& is_global) {
 	LOG(DEBUG) << "<variable_declaration>";
 	expectToken(TOK_RW_VAR);
 	scan();
-	std::shared_ptr<IdToken> id_token = identifier();
-	if (!env->insert(id_token->getVal(), id_token, is_global)) {
+	std::shared_ptr<IdToken> id_tok = identifier();
+	if (!env->insert(id_tok->getVal(), id_tok, is_global)) {
 		LOG(ERROR) << "Failed to add variable to symbol table - see logs";
 	}
 	expectToken(TOK_COLON);
 	scan();
 	TypeMark tm = typeMark();
-	if (id_token->isValid()) {
-		id_token->setTypeMark(tm);
-		id_token->setType(TOK_ID_VAR);
+	if (id_tok->isValid()) {
+		id_tok->setTypeMark(tm);
+		id_tok->setType(TOK_ID_VAR);
 	}
 	if (matchToken(TOK_LBRACK)) {
 		LOG(DEBUG) << "Variable is an array";
 		scan();
-		id_token->setNumElements(bound());
+		id_tok->setNumElements(bound());
 		expectToken(TOK_RBRACK);
 		scan();
 	}
-	LOG(DEBUG) << "Declared variable " << id_token->getStr();
+	LOG(DEBUG) << "Declared variable " << id_tok->getStr();
 }
 
 //	<type_mark> ::=
@@ -273,7 +273,7 @@ TypeMark Parser::typeMark() {
 	}
 	else {
 		LOG(ERROR) << "Invalid type mark: "
-				<< token->getStr();
+				<< tok->getStr();
 	}
 	scan();
 	return tm;
@@ -310,7 +310,7 @@ void Parser::statement() {
 	} else if (matchToken(TOK_RW_RET)) {
 		returnStatement();
 	} else {
-		LOG(DEBUG) << "Invalid statement: " << token->getStr();
+		LOG(DEBUG) << "Invalid statement: " << tok->getStr();
 	}
 }
 
@@ -419,14 +419,14 @@ TypeMark Parser::returnStatement() {
 //		[a-zA-Z][a-zA-Z0-9_]*
 std::shared_ptr<IdToken> Parser::identifier() {
 	LOG(DEBUG) << "<identifier>";
-	std::shared_ptr<IdToken> id_token;
+	std::shared_ptr<IdToken> id_tok;
 	if (expectToken(TOK_IDENT)) {
-		id_token = std::dynamic_pointer_cast<IdToken>(token);
+		id_tok = std::dynamic_pointer_cast<IdToken>(tok);
 		scan();
 	} else {
-		id_token = std::shared_ptr<IdToken>(new IdToken(TOK_INVALID, ""));
+		id_tok = std::shared_ptr<IdToken>(new IdToken(TOK_INVALID, ""));
 	}
-	return id_token;
+	return id_tok;
 }
 
 //	<expression> ::=
@@ -452,7 +452,7 @@ TypeMark Parser::expression() {
 TypeMark Parser::expressionPrime() {
 	LOG(DEBUG) << "<expression_prime>";
 	if (matchToken(TOK_OP_EXPR)) {
-		LOG(DEBUG) << "Bitwise " << token->getVal();
+		LOG(DEBUG) << "Bitwise " << tok->getVal();
 		scan();
 		arithOp();
 		expressionPrime();
@@ -480,7 +480,7 @@ TypeMark Parser::arithOp() {
 TypeMark Parser::arithOpPrime() {
 	LOG(DEBUG) << "<arith_op_prime>";
 	if (matchToken(TOK_OP_ARITH)) {
-		LOG(DEBUG) << "Arithmetic: " << token->getStr();
+		LOG(DEBUG) << "Arithmetic: " << tok->getStr();
 		scan();
 		relation();
 		arithOpPrime();
@@ -512,7 +512,7 @@ TypeMark Parser::relation() {
 TypeMark Parser::relationPrime() {
 	LOG(DEBUG) << "<relation_prime>";
 	if (matchToken(TOK_OP_RELAT)) {
-		LOG(DEBUG) << "Relation: " << token->getStr();
+		LOG(DEBUG) << "Relation: " << tok->getStr();
 		scan();
 		term();
 		relationPrime();
@@ -540,7 +540,7 @@ TypeMark Parser::term() {
 TypeMark Parser::termPrime() {
 	LOG(DEBUG) << "<term_prime>";
 	if (matchToken(TOK_OP_TERM)) {
-		LOG(DEBUG) << "Term: " << token->getStr();
+		LOG(DEBUG) << "Term: " << tok->getStr();
 		scan();
 		factor();
 		termPrime();
@@ -564,24 +564,24 @@ TypeMark Parser::factor() {
 	TypeMark tm = TYPE_NONE;
 
 	// Negative sign can only happen before <number> and <name>
-	if (matchToken(TOK_OP_ARITH) && (token->getVal() == "-")) {
+	if (matchToken(TOK_OP_ARITH) && (tok->getVal() == "-")) {
 		scan();
 		if (matchToken(TOK_IDENT)) {
 			std::shared_ptr<IdToken> id_tok = std::dynamic_pointer_cast<IdToken>(
-					env->lookup(token->getVal()));
+					env->lookup(tok->getVal()));
 			if (!id_tok) {
 				LOG(ERROR) << "Identifier not declared in this scope: "
-						<< token->getStr();
+						<< tok->getStr();
 			} else if (id_tok->getType() == TOK_ID_VAR) {
 				name();
 			} else {
-				LOG(ERROR) << "Expected variable; got: " << token->getStr();
+				LOG(ERROR) << "Expected variable; got: " << tok->getStr();
 			}
 		} else if (matchToken(TOK_NUM)) {
 			number();
 		} else {
 			LOG(ERROR) << "Minus sign must be followed by <name> or <number>.";
-			LOG(ERROR) << "Got: " << token->getStr();
+			LOG(ERROR) << "Got: " << tok->getStr();
 		}
 
 	// `('<expression>`)'
@@ -593,12 +593,12 @@ TypeMark Parser::factor() {
 
 	// <procedure_call> or <name>
 	} else if (matchToken(TOK_IDENT)) {
-		// TODO: How to tell procedure call vs name? Add something to id_token
+		// TODO: How to tell procedure call vs name? Add something to id_tok
 		std::shared_ptr<IdToken> id_tok = std::dynamic_pointer_cast<IdToken>(
-				env->lookup(token->getVal()));
+				env->lookup(tok->getVal()));
 		if (!id_tok) {
 			LOG(ERROR) << "Identifier not declared in this scope: "
-					<< token->getStr();
+					<< tok->getStr();
 		} else if (id_tok->getType() == TOK_ID_VAR) {
 			name();
 		} else if (id_tok->getType() == TOK_ID_PROC) {
@@ -617,17 +617,17 @@ TypeMark Parser::factor() {
 
 	// `true'
 	} else if (matchToken(TOK_RW_TRUE)) {
-		LOG(DEBUG) << token->getStr();
+		LOG(DEBUG) << tok->getStr();
 		scan();
 
 	// `false'
 	} else if (matchToken(TOK_RW_FALSE)) {
-		LOG(DEBUG) << token->getStr();
+		LOG(DEBUG) << tok->getStr();
 		scan();
 
 	// Something went wrong
 	} else {
-		LOG(ERROR) << "Invalid factor: " << token->getStr();
+		LOG(ERROR) << "Invalid factor: " << tok->getStr();
 	}
 	return tm;
 }
@@ -669,7 +669,7 @@ std::shared_ptr<Token> Parser::number() {
 	LOG(DEBUG) << "<number>";
 	std::shared_ptr<Token> num_tok = std::shared_ptr<Token>(new Token());
 	if (expectToken(TOK_NUM)) {
-		num_tok = token;
+		num_tok = tok;
 	}
 	scan();
 	return num_tok;
@@ -683,7 +683,7 @@ std::shared_ptr<LiteralToken<std::string>> Parser::string() {
 			std::shared_ptr<LiteralToken<std::string>>(
 				new LiteralToken<std::string>(TOK_STR, "", TYPE_STR));
 	if (expectToken(TOK_STR)) {
-		str_tok = std::dynamic_pointer_cast<LiteralToken<std::string>>(token);
+		str_tok = std::dynamic_pointer_cast<LiteralToken<std::string>>(tok);
 	} else {
 		LOG(ERROR) << "Using empty string";
 	}
