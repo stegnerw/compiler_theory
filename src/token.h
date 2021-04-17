@@ -81,7 +81,18 @@ public:
 	void setType(const TokenType& t) { type = t; }
 	std::string const getVal() { return val; }
 	static std::string getTokenName(const TokenType& t) {
-		return tok_names[t];
+		if (t < NUM_TOK_ENUMS) {
+			return tok_names[t];
+		} else {
+			return "NUM_TOK_ENUMS";
+		}
+	}
+	static std::string getTypeMarkName(const TypeMark& tm) {
+		if (tm < NUM_TYPE_ENUMS) {
+			return type_mark_names[tm];
+		} else {
+			return "NUM_TYPE_ENUMS";
+		}
 	}
 	bool isValid() { return type != TOK_INVALID; }
 
