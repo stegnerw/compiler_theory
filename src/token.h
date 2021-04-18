@@ -38,8 +38,6 @@ enum TokenType {
 	TOK_OP_ASS, // :=
 	TOK_OP_TERM, // * /
 	TOK_IDENT, // Identifiers
-	TOK_ID_VAR, // Identifier for a variable
-	TOK_ID_PROC, // Identifier for a procedure
 	TOK_NUM, // Numbers (float and int)
 	TOK_STR, // String literals: "[^"]"
 	TOK_PERIOD, // .
@@ -69,7 +67,7 @@ enum TypeMark {
 ////////////////////////////////////////////////////////////////////////////////
 class Token {
 public:
-	Token() : type(TOK_INVALID), val("") {}
+	Token() : type(TOK_INVALID), type_mark(TYPE_NONE), val("") {}
 	Token(const TokenType& t, const std::string& v) : type(t), val(v) {}
 	virtual ~Token() {}
 	virtual std::string const getStr() {
@@ -79,6 +77,8 @@ public:
 	}
 	TokenType const getType() { return type; }
 	void setType(const TokenType& t) { type = t; }
+	TypeMark getTypeMark() { return type_mark; }
+	void setTypeMark(const TypeMark& tm) { type_mark = tm; }
 	std::string const getVal() { return val; }
 	static std::string getTokenName(const TokenType& t) {
 		if (t < NUM_TOK_ENUMS) {
@@ -100,6 +100,7 @@ protected:
 	static const std::string tok_names[NUM_TOK_ENUMS];
 	static const std::string type_mark_names[NUM_TYPE_ENUMS];
 	TokenType type;
+	TypeMark type_mark;
 	std::string val;
 };
 
@@ -110,19 +111,25 @@ protected:
 class IdToken : public Token {
 public:
 	IdToken(const TokenType& t, const std::string& v) :
-			type_mark(TYPE_NONE),
-			num_elements(0) {
+			num_elements(0),
+			procedure(false) {
 		type = t;
+		type_mark = TYPE_NONE;
 		val = v;
 	}
 	std::string const getStr() {
 		std::stringstream ss;
 		ss << "{ " << tok_names[type] << ", " << val << ", "
-			<< type_mark_names[type_mark] << ", " << num_elements << " }";
+			<< type_mark_names[type_mark] /*<< ", " << num_elements << " }"*/ ;
+		if (num_elements > 0) {
+			ss << ", " << num_elements << " elems";
+		}
+		if (procedure) {
+			ss << ", PROCEDURE";
+		}
+		ss << " }";
 		return ss.str();
 	}
-	TypeMark getTypeMark() { return type_mark; }
-	void setTypeMark(const TypeMark& tm) { type_mark = tm; }
 	bool setNumElements(const int& n) {
 		if (n >= 1) {
 			num_elements = n;
@@ -133,10 +140,12 @@ public:
 		}
 	}
 	int getNumElements() { return num_elements; }
+	void setProcedure(bool b) { procedure = b; }
+	bool getProcedure() { return procedure; }
 
 private:
-	TypeMark type_mark;
 	int num_elements;
+	bool procedure;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -147,9 +156,8 @@ template <class T>
 class LiteralToken : public Token {
 public:
 	LiteralToken<T>(const TokenType& t, const T& v, const TypeMark& tm) :
-		val(v), type_mark(tm) { type = t; }
+		val(v) { type = t; type_mark = tm; }
 	T const getVal() { return val; }
-	TypeMark getTypeMark() { return type_mark; }
 	std::string const getStr() {
 		std::stringstream ss;
 		ss << "{ " << tok_names[type] << ", " << val << ", "
@@ -159,7 +167,6 @@ public:
 
 private:
 	T val;
-	TypeMark type_mark;
 };
 
 #endif // TOKEN_H

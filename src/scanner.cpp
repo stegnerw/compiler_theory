@@ -35,7 +35,7 @@ bool Scanner::init(const std::string& src_file) {
 		LOG(ERROR) << "Make sure it exists and you have read permissions";
 		return false;
 	}
-	LOG(INFO) << "Scanner initialized";
+	LOG(INFO) << "Scanner initialized successfully";
 	return true;
 }
 
@@ -130,7 +130,7 @@ std::shared_ptr<Token> Scanner::getToken() {
 			} while ((curr_ct != C_QUOTE) && (curr_ct != C_EOF));
 			if (curr_ct == C_EOF) {
 				v += '"';
-				LOG(ERROR) << "EOF before string termination - assuming closed";
+				LOG(ERROR) << "EOF before string termination; assuming closed";
 			}
 			tok = std::shared_ptr<Token>(new LiteralToken<std::string>(TOK_STR, v,
 					TYPE_STR));
@@ -172,7 +172,7 @@ std::shared_ptr<Token> Scanner::getToken() {
 			std::stringstream ss;
 			LOG(ERROR) << "Invalid character/token encountered: "
 					<< static_cast<char>(curr_c)
-					<< " - treating as whitespace";
+					<< "; treating as whitespace";
 			tok = std::shared_ptr<Token>(new Token());
 			break;
 	}
@@ -195,7 +195,11 @@ void Scanner::nextChar() {
 		next_c = src_fstream.peek();
 		next_ct = next_c < 0 ? C_EOF : char_table.getCharType(next_c);
 	} else {
-		LOG(ERROR) << "Failed to read file";
+		LOG(ERROR) << "Failed to read source file";
+		curr_c = -1;
+		curr_ct = C_EOF;
+		next_c = -1;
+		next_ct = C_EOF;
 	}
 }
 
@@ -242,6 +246,6 @@ void Scanner::eatBlockComment() {
 		nextChar();
 	} while ((block_level > 0) && (curr_ct != C_EOF));
 	if (curr_ct == C_EOF) {
-		LOG(WARN) << "EOF before block comment termination - assuming closed";
+		LOG(WARN) << "EOF before block comment termination; assuming closed";
 	}
 }

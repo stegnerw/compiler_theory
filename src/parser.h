@@ -3,12 +3,14 @@
 
 #include <fstream>
 #include <memory>
+#include <stack>
 #include <string>
 #include <unordered_map>
 
 #include "environment.h"
 #include "scanner.h"
 #include "token.h"
+#include "type_checker.h"
 
 class Parser {
 public:
@@ -19,11 +21,14 @@ public:
 private:
 	std::shared_ptr<Environment> env;
 	Scanner scanner;
+	TypeChecker type_checker;
 	std::shared_ptr<Token> tok;
-	//std::shared_ptr<Token> next_tok;
+	std::stack<std::shared_ptr<IdToken>> function_stack;
 	void scan();
 	bool matchToken(const TokenType&);
 	bool expectToken(const TokenType&);
+	void push_scope(std::shared_ptr<IdToken>);
+	void pop_scope();
 	void programHeader();
 	void programBody();
 	void declarations(bool);
@@ -38,7 +43,7 @@ private:
 	TypeMark typeMark();
 	int bound();
 	void statement();
-	void procedureCall();
+	TypeMark procedureCall();
 	void assigmentStatement();
 	TypeMark destination();
 	void ifStatement();
@@ -46,13 +51,13 @@ private:
 	TypeMark returnStatement();
 	std::shared_ptr<IdToken> identifier();
 	TypeMark expression();
-	TypeMark expressionPrime();
+	TypeMark expressionPrime(const TypeMark&);
 	TypeMark arithOp();
-	TypeMark arithOpPrime();
+	TypeMark arithOpPrime(const TypeMark&);
 	TypeMark relation();
-	TypeMark relationPrime();
+	TypeMark relationPrime(const TypeMark&);
 	TypeMark term();
-	TypeMark termPrime();
+	TypeMark termPrime(const TypeMark&);
 	TypeMark factor();
 	TypeMark name();
 	void argumentList();

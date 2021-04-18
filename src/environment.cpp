@@ -50,50 +50,59 @@ Environment::Environment() {
 	std::shared_ptr<IdToken> builtin_tok;
 
 	// getBool() : bool value
-	builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_ID_PROC, "getbool"));
+	builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_IDENT, "getbool"));
 	builtin_tok->setTypeMark(TYPE_BOOL);
+	builtin_tok->setProcedure(true);
 	global_symbol_table.insert(builtin_tok->getVal(), builtin_tok);
 
 	// getInteger() : integer value
-	builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_ID_PROC,
+	builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_IDENT,
 			"getinteger"));
 	builtin_tok->setTypeMark(TYPE_INT);
+	builtin_tok->setProcedure(true);
 	global_symbol_table.insert(builtin_tok->getVal(), builtin_tok);
 
 	// getFloat() : float value
-	builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_ID_PROC, "getfloat"));
+	builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_IDENT, "getfloat"));
 	builtin_tok->setTypeMark(TYPE_FLT);
+	builtin_tok->setProcedure(true);
 	global_symbol_table.insert(builtin_tok->getVal(), builtin_tok);
 
 	// getString() : string value
-	builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_ID_PROC, "getstring"));
+	builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_IDENT, "getstring"));
 	builtin_tok->setTypeMark(TYPE_STR);
+	builtin_tok->setProcedure(true);
 	global_symbol_table.insert(builtin_tok->getVal(), builtin_tok);
 
 	// putBool(bool value) : bool
-	builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_ID_PROC, "putbool"));
+	builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_IDENT, "putbool"));
 	builtin_tok->setTypeMark(TYPE_BOOL);
+	builtin_tok->setProcedure(true);
 	global_symbol_table.insert(builtin_tok->getVal(), builtin_tok);
 
 	// putInteger(integer value) : bool
-	builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_ID_PROC,
+	builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_IDENT,
 			"putinteger"));
 	builtin_tok->setTypeMark(TYPE_BOOL);
+	builtin_tok->setProcedure(true);
 	global_symbol_table.insert(builtin_tok->getVal(), builtin_tok);
 
 	// putFloat(float value) : bool
-	builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_ID_PROC, "putfloat"));
+	builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_IDENT, "putfloat"));
 	builtin_tok->setTypeMark(TYPE_BOOL);
+	builtin_tok->setProcedure(true);
 	global_symbol_table.insert(builtin_tok->getVal(), builtin_tok);
 
 	// putString(string value) : bool
-	builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_ID_PROC, "putstring"));
+	builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_IDENT, "putstring"));
 	builtin_tok->setTypeMark(TYPE_BOOL);
+	builtin_tok->setProcedure(true);
 	global_symbol_table.insert(builtin_tok->getVal(), builtin_tok);
 
 	// sqrt(integer value) : float
-	builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_ID_PROC, "sqrt"));
+	builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_IDENT, "sqrt"));
 	builtin_tok->setTypeMark(TYPE_FLT);
+	builtin_tok->setProcedure(true);
 	global_symbol_table.insert(builtin_tok->getVal(), builtin_tok);
 }
 
@@ -119,16 +128,16 @@ bool Environment::insert(const std::string& key,
 			LOG(DEBUG) << "Adding local";
 			success = local_symbol_table_stack.top().insert(key, t);
 		} else {
-			LOG(WARN) << "Attempt to add local symbol with no local symbol table";
+			LOG(ERROR) << "Attempt to add local symbol with no local symbol table";
 		}
 	} else {
-		LOG(WARN) << "Attempt to overwrite reserved word: " << key;
+		LOG(ERROR) << "Cannot overwrite reserved word: " << key;
 	}
 	if (success) {
 		LOG(DEBUG) << "Added " << t->getStr()
 				<< " to symbol table with key " << key;
 	} else {
-		LOG(WARN) << "Failed to add " << t->getStr()
+		LOG(ERROR) << "Failed to add " << t->getStr()
 				<< " to symbol table with key " << key;
 	}
 	return success;
@@ -154,7 +163,7 @@ void Environment::pop() {
 		LOG(DEBUG) << "Popping symbol table stack";
 		local_symbol_table_stack.pop();
 	} else {
-		LOG(WARN) << "Attempt to pop empty symbol table stack";
+		LOG(ERROR) << "Attempt to pop empty symbol table stack";
 	}
 }
 
@@ -162,7 +171,7 @@ std::string Environment::getLocalStr() {
 	if (!local_symbol_table_stack.empty()) {
 		return local_symbol_table_stack.top().getStr();
 	} else {
-		LOG(WARN) << "Attempt to get local symbol table string with empty stack";
+		LOG(ERROR) << "Attempt to get local symbol table string with empty stack";
 		return "\n";
 	}
 }

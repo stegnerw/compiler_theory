@@ -88,6 +88,7 @@ void show_usage(std::string prog_name) {
 				<< "Options:\n"
 				<< "\t-h\t\tShow this help message\n"
 				<< "\t-i INFILE\tSpecify input file to compile\n"
+				<< "\t-l LOGFILE\tSpecify log file to store debug log\n"
 				<< "\t-v LEVEL\tSpecify verbosity level (default 2):\n"
 				<< "\t\t\t0 - DEBUG\n"
 				<< "\t\t\t1 - INFO\n"

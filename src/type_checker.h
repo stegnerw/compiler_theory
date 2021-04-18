@@ -11,10 +11,11 @@
 class TypeChecker {
 public:
 	TypeChecker();
-	bool areCompatible(std::shared_ptr<Token>, const TypeMark&);
-	bool areCompatible(std::shared_ptr<Token>, const TypeMark&,
+	bool checkCompatible(std::shared_ptr<Token>, const TypeMark&);
+	bool checkCompatible(std::shared_ptr<Token>, const TypeMark&,
 			const TypeMark&);
-	bool areCompatible(const TypeMark&, const TypeMark&);
+	bool checkCompatible(const TypeMark&, const TypeMark&);
+	bool checkArrayIndex(const TypeMark&);
 
 private:
 };

@@ -30,7 +30,7 @@ bool SymbolTable::insert(const std::string& key,
 		symbol_map[key] = t;
 		success = true;
 	} else {
-		LOG(WARN) << "Symbol already exists with name: " << key;
+		LOG(ERROR) << "Symbol already exists with name: " << key;
 	}
 	return success;
 }
