@@ -756,6 +756,9 @@ void Parser::argumentList(const int& idx, std::shared_ptr<IdToken> fun_tok) {
 	if (matchToken(TOK_COMMA)) {
 		scan();
 		argumentList(idx + 1, fun_tok);
+	} else if (idx < fun_tok->getNumElements() - 1) {
+		LOG(ERROR) << "Not enough parameters for procedure call "
+				<< fun_tok->getVal();
 	}
 }
 
