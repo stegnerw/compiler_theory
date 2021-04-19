@@ -122,13 +122,17 @@ Environment::Environment() {
 	global_symbol_table.insert(builtin_tok->getVal(), builtin_tok);
 }
 
-std::shared_ptr<Token> Environment::lookup(const std::string& key) {
+std::shared_ptr<Token> Environment::lookup(const std::string& key,
+		const bool& error) {
 	std::shared_ptr<Token> ret_val = nullptr;
 	if (!local_symbol_table_stack.empty()) {
 		ret_val = local_symbol_table_stack.top().lookup(key);
 	}
 	if (!ret_val) {
 		ret_val = global_symbol_table.lookup(key);
+	}
+	if (error && !ret_val) {
+		LOG(ERROR) << "Identifier not in scope: " << key;
 	}
 	return ret_val;
 }

@@ -69,7 +69,7 @@ std::shared_ptr<Token> Scanner::getToken() {
 			if (!env->isReserved(v)) {
 				tok = std::shared_ptr<Token>(new IdToken(TOK_IDENT, v));
 			} else {
-				tok = env->lookup(v);
+				tok = env->lookup(v, false);
 			}
 			break;
 		// Operators (Assignment handles colon)

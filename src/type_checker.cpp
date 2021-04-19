@@ -108,13 +108,11 @@ bool TypeChecker::checkCompatible(const TypeMark& op1, const TypeMark& op2) {
 		// This should never happen
 		case TYPE_NONE:
 		case NUM_TYPE_ENUMS:  // Compiler warns if this isn't there
-			LOG(WARN) << "Invalid type mark";
 			compatible = false;
 			break;
 	}
 
-	// Only warn if types are incompatible
-	// Let the parser decide if it's an error (it probably is)
+	// Issue an error if types aren't compatible
 	if (compatible) {
 		LOG(DEBUG) << "Types are compatible";
 	} else {

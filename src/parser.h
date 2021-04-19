@@ -49,7 +49,7 @@ private:
 	void ifStatement();
 	void loopStatement();
 	TypeMark returnStatement();
-	std::shared_ptr<IdToken> identifier();
+	std::shared_ptr<IdToken> identifier(const bool&);
 	TypeMark expression();
 	TypeMark expressionPrime(const TypeMark&);
 	TypeMark arithOp();

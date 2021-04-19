@@ -11,7 +11,7 @@
 class Environment {
 public:
 	Environment();
-	std::shared_ptr<Token> lookup(const std::string&);
+	std::shared_ptr<Token> lookup(const std::string&, const bool&);
 	bool insert(const std::string&, std::shared_ptr<Token>,
 		const bool&);
 	bool isReserved(const std::string&);

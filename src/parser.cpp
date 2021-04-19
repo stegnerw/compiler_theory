@@ -96,7 +96,7 @@ void Parser::programHeader() {
 	LOG(DEBUG) << "<program_header>";
 	expectToken(TOK_RW_PROG);
 	scan();
-	identifier();
+	identifier(false);
 	expectToken(TOK_RW_IS);
 	scan();
 }
@@ -185,7 +185,7 @@ void Parser::procedureHeader(const bool& is_global) {
 	// This should not happen but just in case
 	expectToken(TOK_RW_PROC);
 	scan();
-	std::shared_ptr<IdToken> id_tok = identifier();
+	std::shared_ptr<IdToken> id_tok = identifier(false);
 	env->insert(id_tok->getVal(), id_tok, is_global);
 	expectToken(TOK_COLON);
 	scan();
@@ -252,7 +252,7 @@ std::shared_ptr<IdToken> Parser::variableDeclaration(const bool& is_global) {
 	LOG(DEBUG) << "<variable_declaration>";
 	expectToken(TOK_RW_VAR);
 	scan();
-	std::shared_ptr<IdToken> id_tok = identifier();
+	std::shared_ptr<IdToken> id_tok = identifier(false);
 	env->insert(id_tok->getVal(), id_tok, is_global);
 	expectToken(TOK_COLON);
 	scan();
@@ -344,8 +344,7 @@ void Parser::statement() {
 //		<identifier>`('[<argument_list>]`)'
 TypeMark Parser::procedureCall() {
 	LOG(DEBUG) << "<procedure_call>";
-	std::shared_ptr<IdToken> id_tok = std::dynamic_pointer_cast<IdToken>(
-			env->lookup(identifier()->getVal()));
+	std::shared_ptr<IdToken> id_tok = identifier(true);
 	expectToken(TOK_LPAREN);
 	scan();
 	if (!matchToken(TOK_RPAREN)) {
@@ -374,8 +373,8 @@ void Parser::assigmentStatement() {
 // TODO: Array semantics - check if it's the whole array or just an element
 TypeMark Parser::destination() {
 	LOG(DEBUG) << "<destination>";
-	std::shared_ptr<IdToken> id_tok = std::dynamic_pointer_cast<IdToken>(
-			env->lookup(identifier()->getVal()));
+	expectToken(TOK_IDENT);
+	std::shared_ptr<IdToken> id_tok = identifier(true);
 	TypeMark tm = id_tok->getTypeMark();
 	int num_elements = id_tok->getNumElements();
 	if (matchToken(TOK_LBRACK)) { // TODO: Check array indexing
@@ -481,13 +480,19 @@ TypeMark Parser::returnStatement() {
 
 //	<identifier> ::=
 //		[a-zA-Z][a-zA-Z0-9_]*
-// TODO: Maybe add a bool to this whether it should look it up or not?
-std::shared_ptr<IdToken> Parser::identifier() {
+std::shared_ptr<IdToken> Parser::identifier(const bool& lookup) {
 	LOG(DEBUG) << "<identifier>";
 	std::shared_ptr<IdToken> id_tok;
 	if (expectToken(TOK_IDENT)) {
 		id_tok = std::dynamic_pointer_cast<IdToken>(tok);
 		scan();
+		if (lookup) {
+			id_tok = std::dynamic_pointer_cast<IdToken>(env->lookup(id_tok->getVal(),
+					true));
+			if (!id_tok) {
+				id_tok = std::shared_ptr<IdToken>(new IdToken(TOK_INVALID, ""));
+			}
+		}
 	} else {
 		id_tok = std::shared_ptr<IdToken>(new IdToken(TOK_INVALID, ""));
 	}
@@ -648,7 +653,7 @@ TypeMark Parser::factor() {
 		scan();
 		if (matchToken(TOK_IDENT)) {
 			std::shared_ptr<IdToken> id_tok = std::dynamic_pointer_cast<IdToken>(
-					env->lookup(tok->getVal()));
+					env->lookup(tok->getVal(), false));
 			if (!id_tok) {
 				LOG(ERROR) << "Identifier not declared in this scope: "
 						<< tok->getStr();
@@ -675,7 +680,7 @@ TypeMark Parser::factor() {
 	// <procedure_call> or <name>
 	} else if (matchToken(TOK_IDENT)) {
 		std::shared_ptr<IdToken> id_tok = std::dynamic_pointer_cast<IdToken>(
-				env->lookup(tok->getVal()));
+				env->lookup(tok->getVal(), false));
 		if (!id_tok) {
 			LOG(ERROR) << "Identifier not declared in this scope: "
 					<< tok->getStr();
@@ -718,8 +723,7 @@ TypeMark Parser::factor() {
 // TODO: Array bounds checking
 TypeMark Parser::name() {
 	LOG(DEBUG) << "<name>";
-	std::shared_ptr<IdToken> id_tok = std::dynamic_pointer_cast<IdToken>(
-			env->lookup(identifier()->getVal()));
+	std::shared_ptr<IdToken> id_tok = identifier(true);
 	TypeMark tm = id_tok->getTypeMark();
 	if (matchToken(TOK_LBRACK)) {
 		// TODO: Check if it's actually an array
