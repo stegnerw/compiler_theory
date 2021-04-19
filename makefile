@@ -39,12 +39,14 @@ I_TST_FILES	= $(wildcard $(I_TST_DIR)/*.src)
 I_LOG_FILES	= $(patsubst $(I_TST_DIR)/%.src, $(I_LOG_DIR)/%.log, $(I_TST_FILES))
 
 # Build Targets
-.PHONY: clean
+.PHONY: clean all clean_all
 
 $(TARGET): $(OBJ_FILES) | $(BIN_DIR)
 	$(CC) $(CFLAGS) -o $@ $^
 
 all: $(TARGET) test
+
+clean_all: clean all
 
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp | $(OBJ_DIR)
 	$(CC) $(CFLAGS) -c -o $@ $<
