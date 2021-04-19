@@ -149,7 +149,7 @@ public:
 		ss << "{ " << tok_names[type] << ", " << val << ", "
 			<< type_mark_names[type_mark] /*<< ", " << num_elements << " }"*/ ;
 		if (num_elements > 0) {
-			ss << ", " << num_elements << " elems";
+			ss << ", " << num_elements << " elem(s)";
 		}
 		if (procedure) {
 			ss << ", PROCEDURE";
