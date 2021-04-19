@@ -48,6 +48,7 @@ Environment::Environment() {
 
 	// Add builtin functions to the global scope
 	std::shared_ptr<IdToken> builtin_tok;
+	std::shared_ptr<IdToken> param_tok;
 
 	// getBool() : bool value
 	builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_IDENT, "getbool"));
@@ -78,6 +79,9 @@ Environment::Environment() {
 	builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_IDENT, "putbool"));
 	builtin_tok->setTypeMark(TYPE_BOOL);
 	builtin_tok->setProcedure(true);
+	param_tok = std::shared_ptr<IdToken>(new IdToken(TOK_IDENT, "param"));
+	param_tok->setTypeMark(TYPE_BOOL);
+	builtin_tok->addParam(param_tok);
 	global_symbol_table.insert(builtin_tok->getVal(), builtin_tok);
 
 	// putInteger(integer value) : bool
@@ -85,24 +89,36 @@ Environment::Environment() {
 			"putinteger"));
 	builtin_tok->setTypeMark(TYPE_BOOL);
 	builtin_tok->setProcedure(true);
+	param_tok = std::shared_ptr<IdToken>(new IdToken(TOK_IDENT, "param"));
+	param_tok->setTypeMark(TYPE_INT);
+	builtin_tok->addParam(param_tok);
 	global_symbol_table.insert(builtin_tok->getVal(), builtin_tok);
 
 	// putFloat(float value) : bool
 	builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_IDENT, "putfloat"));
 	builtin_tok->setTypeMark(TYPE_BOOL);
 	builtin_tok->setProcedure(true);
+	param_tok = std::shared_ptr<IdToken>(new IdToken(TOK_IDENT, "param"));
+	param_tok->setTypeMark(TYPE_FLT);
+	builtin_tok->addParam(param_tok);
 	global_symbol_table.insert(builtin_tok->getVal(), builtin_tok);
 
 	// putString(string value) : bool
 	builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_IDENT, "putstring"));
 	builtin_tok->setTypeMark(TYPE_BOOL);
 	builtin_tok->setProcedure(true);
+	param_tok = std::shared_ptr<IdToken>(new IdToken(TOK_IDENT, "param"));
+	param_tok->setTypeMark(TYPE_STR);
+	builtin_tok->addParam(param_tok);
 	global_symbol_table.insert(builtin_tok->getVal(), builtin_tok);
 
 	// sqrt(integer value) : float
 	builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_IDENT, "sqrt"));
 	builtin_tok->setTypeMark(TYPE_FLT);
 	builtin_tok->setProcedure(true);
+	param_tok = std::shared_ptr<IdToken>(new IdToken(TOK_IDENT, "param"));
+	param_tok->setTypeMark(TYPE_INT);
+	builtin_tok->addParam(param_tok);
 	global_symbol_table.insert(builtin_tok->getVal(), builtin_tok);
 }
 

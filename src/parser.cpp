@@ -209,7 +209,13 @@ void Parser::procedureHeader(const bool& is_global) {
 //	|	<parameter>
 void Parser::parameterList() {
 	LOG(DEBUG) << "<parameter_list>";
-	parameter();
+	std::shared_ptr<IdToken> par_tok = parameter();
+	if (!par_tok->isValid()) {
+		LOG(ERROR) << "Ill-formed parameter: " << par_tok->getStr() << "; skipping";
+	} else {
+		function_stack.top()->addParam(par_tok);
+	}
+
 	if (matchToken(TOK_COMMA)) {
 		scan();
 		parameterList();
@@ -218,9 +224,9 @@ void Parser::parameterList() {
 
 //	<parameter> ::=
 //		<variable_declaration>
-void Parser::parameter() {
+std::shared_ptr<IdToken> Parser::parameter() {
 	LOG(DEBUG) << "<parameter>";
-	variableDeclaration(false);
+	return variableDeclaration(false);
 }
 
 //	<procedure_body> ::=
@@ -242,7 +248,7 @@ void Parser::procedureBody() {
 
 //	<variable_declaration> ::=
 //		`variable' <identifier> `:' <type_mark> [`['<bound>`]']
-void Parser::variableDeclaration(const bool& is_global) {
+std::shared_ptr<IdToken> Parser::variableDeclaration(const bool& is_global) {
 	LOG(DEBUG) << "<variable_declaration>";
 	expectToken(TOK_RW_VAR);
 	scan();
@@ -263,6 +269,7 @@ void Parser::variableDeclaration(const bool& is_global) {
 		scan();
 	}
 	LOG(DEBUG) << "Declared variable " << id_tok->getStr();
+	return id_tok;
 }
 
 //	<type_mark> ::=
@@ -291,15 +298,23 @@ TypeMark Parser::typeMark() {
 
 //	<bound> ::=
 //		<number>
+// TODO: Consolidate exit points of this function for readability
 int Parser::bound() {
 	LOG(DEBUG) << "<bound>";
 	std::shared_ptr<Token> num_tok = number();
 	std::shared_ptr<LiteralToken<int>> bound_tok =
 			std::dynamic_pointer_cast<LiteralToken<int>>(num_tok);
 	if (bound_tok) {
-		return bound_tok->getVal();
+		int bound_val = bound_tok->getVal();
+		if (bound_val < 1) {
+			LOG(ERROR) << "Bound must be at least 1; received bound " << bound_val;
+			LOG(WARN) << "Using bound of 1";
+			return 1;
+		}
+		return bound_val;
 	} else {
 		LOG(ERROR) << "Invalid bound received: " << num_tok->getVal();
+		LOG(WARN) << "Using bound of 1";
 		return 1;
 	}
 }
@@ -320,7 +335,8 @@ void Parser::statement() {
 	} else if (matchToken(TOK_RW_RET)) {
 		returnStatement();
 	} else {
-		LOG(ERROR) << "Unexpected token: " << tok->getVal();
+		LOG(ERROR) << "Unexpected token: " << tok->getVal()
+				<< "; expected statement";
 	}
 }
 
@@ -333,7 +349,7 @@ TypeMark Parser::procedureCall() {
 	expectToken(TOK_LPAREN);
 	scan();
 	if (!matchToken(TOK_RPAREN)) {
-		argumentList();
+		argumentList(0, id_tok);
 	}
 	expectToken(TOK_RPAREN);
 	scan();
@@ -355,6 +371,7 @@ void Parser::assigmentStatement() {
 //	<destination> ::=
 //		<identifier>[`['<expression>`]']
 // TODO: Make sure it is a variable not a function
+// TODO: Array semantics - check if it's the whole array or just an element
 TypeMark Parser::destination() {
 	LOG(DEBUG) << "<destination>";
 	std::shared_ptr<IdToken> id_tok = std::dynamic_pointer_cast<IdToken>(
@@ -464,6 +481,7 @@ TypeMark Parser::returnStatement() {
 
 //	<identifier> ::=
 //		[a-zA-Z][a-zA-Z0-9_]*
+// TODO: Maybe add a bool to this whether it should look it up or not?
 std::shared_ptr<IdToken> Parser::identifier() {
 	LOG(DEBUG) << "<identifier>";
 	std::shared_ptr<IdToken> id_tok;
@@ -493,8 +511,7 @@ TypeMark Parser::expression() {
 	if (bitwise_not) {
 		type_checker.checkCompatible(op_tok, tm_arith);
 	}
-	TypeMark tm_expr = expressionPrime(tm_arith);
-	return tm_expr;
+	return expressionPrime(tm_arith);
 }
 
 //	<expression_prime> ::=
@@ -505,13 +522,13 @@ TypeMark Parser::expressionPrime(const TypeMark& tm) {
 	LOG(DEBUG) << "<expression_prime>";
 	if (!matchToken(TOK_OP_EXPR)) {
 		LOG(DEBUG) << "epsilon";
-		return tm;
+	} else {
+		std::shared_ptr<Token> op_tok = tok;
+		scan();
+		TypeMark tm_arith = arithOp();
+		type_checker.checkCompatible(op_tok, tm, tm_arith);
+		expressionPrime(tm_arith);
 	}
-	std::shared_ptr<Token> op_tok = tok;
-	scan();
-	TypeMark tm_arith = arithOp();
-	type_checker.checkCompatible(op_tok, tm, tm_arith);
-	expressionPrime(tm_arith);
 	return tm;
 }
 
@@ -547,8 +564,7 @@ TypeMark Parser::arithOpPrime(const TypeMark& tm) {
 	} else {
 		tm_result = TYPE_INT;
 	}
-	TypeMark tm_arith_op_prime = arithOpPrime(tm_result);
-	return tm_arith_op_prime;
+	return arithOpPrime(tm_result);
 }
 
 //	<relation> ::=
@@ -586,8 +602,7 @@ TypeMark Parser::relationPrime(const TypeMark& tm) {
 TypeMark Parser::term() {
 	LOG(DEBUG) << "<term>";
 	TypeMark tm_fact = factor();
-	TypeMark tm_term_prime = termPrime(tm_fact);
-	return tm_term_prime;
+	return termPrime(tm_fact);
 }
 
 //	<term_prime> ::=
@@ -692,7 +707,8 @@ TypeMark Parser::factor() {
 
 	// Oof
 	} else {
-		LOG(ERROR) << "Invalid factor: " << tok->getStr();
+		LOG(ERROR) << "Unexpected token: " << tok->getStr();
+		tm = TYPE_NONE;
 	}
 	return tm;
 }
@@ -709,7 +725,8 @@ TypeMark Parser::name() {
 		// TODO: Check if it's actually an array
 		LOG(DEBUG) << "Indexing array";
 		scan();
-		expression();
+		TypeMark tm_idx = expression();
+		type_checker.checkArrayIndex(tm_idx);
 		expectToken(TOK_RBRACK);
 		scan();
 	}
@@ -720,12 +737,21 @@ TypeMark Parser::name() {
 //	<argument_list> ::=
 //		<expression> `,' <argument_list>
 //	|	<expression>
-void Parser::argumentList() {
+void Parser::argumentList(const int& idx, std::shared_ptr<IdToken> fun_tok) {
 	LOG(DEBUG) << "<argument_list>";
-	expression();
+	TypeMark tm_arg = expression();
+	std::shared_ptr<IdToken> param = fun_tok->getParam(idx);
+	if (!param) {
+		LOG(ERROR) << "Unexpected parameter with type "
+				<< Token::getTypeMarkName(tm_arg);
+	} else if (!type_checker.checkCompatible(param->getTypeMark(), tm_arg)) {
+		LOG(ERROR) << "Expected parameter with type "
+				<< Token::getTypeMarkName(param->getTypeMark()) << "; got "
+				<< Token::getTypeMarkName(tm_arg);
+	}
 	if (matchToken(TOK_COMMA)) {
 		scan();
-		argumentList();
+		argumentList(idx + 1, fun_tok);
 	}
 }
 

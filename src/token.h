@@ -6,8 +6,10 @@
 // All of the classes are inlined where appropriate for consistency.
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <memory>
 #include <sstream>
 #include <string>
+#include <vector>
 
 #include "log.h"
 
@@ -67,19 +69,39 @@ enum TypeMark {
 ////////////////////////////////////////////////////////////////////////////////
 class Token {
 public:
-	Token() : type(TOK_INVALID), type_mark(TYPE_NONE), val("") {}
-	Token(const TokenType& t, const std::string& v) : type(t), val(v) {}
+
+	// Constructors
+	Token() : type(TOK_INVALID), val(""),  type_mark(TYPE_NONE) {}
+	Token(const TokenType& t, const std::string& v) :
+		type(t),
+		val(v),
+		type_mark(TYPE_NONE) {}
+
+	// Destructor (to avoid compiler warning)
 	virtual ~Token() {}
+
+	// Get a string representation
 	virtual std::string const getStr() {
 		std::stringstream ss;
 		ss << "{ " << tok_names[type] << ", " << val << " }";
 		return ss.str();
 	}
-	TokenType const getType() { return type; }
+
+	// type setter/getter
 	void setType(const TokenType& t) { type = t; }
-	TypeMark getTypeMark() { return type_mark; }
+	TokenType const getType() { return type; }
+
+	// type_mark setter/getter
 	void setTypeMark(const TypeMark& tm) { type_mark = tm; }
+	TypeMark getTypeMark() { return type_mark; }
+
+	// val getter
 	std::string const getVal() { return val; }
+
+	// Check if the token is valid
+	bool isValid() { return type != TOK_INVALID; }
+
+	// Get a string representation of a given token
 	static std::string getTokenName(const TokenType& t) {
 		if (t < NUM_TOK_ENUMS) {
 			return tok_names[t];
@@ -87,6 +109,8 @@ public:
 			return "NUM_TOK_ENUMS";
 		}
 	}
+
+	// Get a string representation of a give type mark
 	static std::string getTypeMarkName(const TypeMark& tm) {
 		if (tm < NUM_TYPE_ENUMS) {
 			return type_mark_names[tm];
@@ -94,14 +118,13 @@ public:
 			return "NUM_TYPE_ENUMS";
 		}
 	}
-	bool isValid() { return type != TOK_INVALID; }
 
 protected:
+	TokenType type;
+	std::string val;
+	TypeMark type_mark;
 	static const std::string tok_names[NUM_TOK_ENUMS];
 	static const std::string type_mark_names[NUM_TYPE_ENUMS];
-	TokenType type;
-	TypeMark type_mark;
-	std::string val;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -110,6 +133,8 @@ protected:
 ////////////////////////////////////////////////////////////////////////////////
 class IdToken : public Token {
 public:
+
+	// Constructor
 	IdToken(const TokenType& t, const std::string& v) :
 			num_elements(0),
 			procedure(false) {
@@ -117,6 +142,8 @@ public:
 		type_mark = TYPE_NONE;
 		val = v;
 	}
+
+	// Get a string representation
 	std::string const getStr() {
 		std::stringstream ss;
 		ss << "{ " << tok_names[type] << ", " << val << ", "
@@ -126,10 +153,19 @@ public:
 		}
 		if (procedure) {
 			ss << ", PROCEDURE";
+			if (num_elements > 0) {
+				ss << ", PARAMETERS: (\n";
+				for (auto i : param_list) {
+					ss << "\t" << i->getStr() << ",\n";
+				}
+				ss << ")";
+			}
 		}
 		ss << " }";
 		return ss.str();
 	}
+
+	// num_elements setter/getter
 	bool setNumElements(const int& n) {
 		if (n >= 1) {
 			num_elements = n;
@@ -140,12 +176,46 @@ public:
 		}
 	}
 	int getNumElements() { return num_elements; }
+
+	// procedure setter/getter
 	void setProcedure(bool b) { procedure = b; }
 	bool getProcedure() { return procedure; }
+
+	// param_list adder/getter
+	void addParam(std::shared_ptr<IdToken> param_token) {
+		if (!procedure) {
+			LOG(ERROR) << "Cannot add parameters to a variable";
+			return;
+		}
+		if (!param_token) {
+			LOG(ERROR) << "Null pointer received as parameter; parameter skipped";
+			return;
+		}
+		param_list.push_back(param_token);
+		num_elements++;
+	}
+	std::shared_ptr<IdToken> getParam(int idx) {
+		if (!procedure) {
+			LOG(ERROR) << "Cannot get parameters from a variable";
+			return nullptr;
+		}
+		if (idx >= num_elements) {
+			LOG(ERROR) << "Procedure " << val << " only has " << num_elements
+					<< " parameters";
+			LOG(ERROR) << "Cannot access parameter with index " << idx;
+			return nullptr;
+		}
+		if (idx < 0) {
+			LOG(ERROR) << "Cannot access negative index parameter: " << idx;
+			return nullptr;
+		}
+		return param_list[idx];
+	}
 
 private:
 	int num_elements;
 	bool procedure;
+	std::vector<std::shared_ptr<IdToken>> param_list;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -155,9 +225,15 @@ private:
 template <class T>
 class LiteralToken : public Token {
 public:
+
+	// Constructor
 	LiteralToken<T>(const TokenType& t, const T& v, const TypeMark& tm) :
 		val(v) { type = t; type_mark = tm; }
+
+	// val getter
 	T const getVal() { return val; }
+
+	// Get a string representation
 	std::string const getStr() {
 		std::stringstream ss;
 		ss << "{ " << tok_names[type] << ", " << val << ", "

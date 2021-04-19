@@ -48,7 +48,9 @@ bool TypeChecker::checkCompatible(std::shared_ptr<Token> tok, const TypeMark& op
 		// `+' `-' `*' and `/' work for only `int' or `float'
 		case TOK_OP_ARITH:
 		case TOK_OP_TERM:
-			compatible = (op1 == op2) && ((op1 == TYPE_INT) || (op1 == TYPE_BOOL));
+			//compatible = (op1 == op2) && ((op1 == TYPE_INT) || (op1 == TYPE_BOOL));
+			compatible = checkCompatible(op1, op2);
+			compatible &= (op1 != TYPE_BOOL) && (op2 != TYPE_BOOL);
 			break;
 
 		// The types just have to be compatible

@@ -37,9 +37,9 @@ private:
 	void procedureDeclaration(const bool&);
 	void procedureHeader(const bool&);
 	void parameterList();
-	void parameter();
+	std::shared_ptr<IdToken> parameter();
 	void procedureBody();
-	void variableDeclaration(const bool&);
+	std::shared_ptr<IdToken> variableDeclaration(const bool&);
 	TypeMark typeMark();
 	int bound();
 	void statement();
@@ -60,7 +60,7 @@ private:
 	TypeMark termPrime(const TypeMark&);
 	TypeMark factor();
 	TypeMark name();
-	void argumentList();
+	void argumentList(const int&, std::shared_ptr<IdToken>);
 	std::shared_ptr<Token> number();
 	std::shared_ptr<LiteralToken<std::string>> string();
 };
