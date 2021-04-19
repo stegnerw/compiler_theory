@@ -507,7 +507,7 @@ TypeMark Parser::expression() {
 	std::shared_ptr<Token> op_tok;
 	if (bitwise_not) {
 		LOG(DEBUG) << "Bitwise not";
-		op_tok = tok;
+		op_tok = std::shared_ptr<Token>(new Token(TOK_OP_EXPR, "not"));
 		scan();
 	}
 	TypeMark tm_arith = arithOp();
