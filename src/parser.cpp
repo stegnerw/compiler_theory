@@ -369,16 +369,21 @@ void Parser::assigmentStatement() {
 
 //	<destination> ::=
 //		<identifier>[`['<expression>`]']
-// TODO: Make sure it is a variable not a function
 // TODO: Array semantics - check if it's the whole array or just an element
 TypeMark Parser::destination() {
 	LOG(DEBUG) << "<destination>";
 	expectToken(TOK_IDENT);
 	std::shared_ptr<IdToken> id_tok = identifier(true);
+	if (id_tok->getProcedure()) {
+		LOG(ERROR) << "Expected variable; got procedure " << id_tok->getVal();
+	}
 	TypeMark tm = id_tok->getTypeMark();
 	int num_elements = id_tok->getNumElements();
-	if (matchToken(TOK_LBRACK)) { // TODO: Check array indexing
+	if (matchToken(TOK_LBRACK)) {
 		LOG(DEBUG) << "Indexing array";
+		if (id_tok->getProcedure() || (id_tok->getNumElements() < 1)) {
+			LOG(ERROR) << "Attempt to index non-array symbol " << id_tok->getVal();
+		}
 		num_elements = 0;
 		scan();
 		TypeMark tm_bound = expression();
@@ -724,10 +729,15 @@ TypeMark Parser::factor() {
 TypeMark Parser::name() {
 	LOG(DEBUG) << "<name>";
 	std::shared_ptr<IdToken> id_tok = identifier(true);
+	if (id_tok->getProcedure()) {
+		LOG(ERROR) << "Expected variable; got procedure " << id_tok->getVal();
+	}
 	TypeMark tm = id_tok->getTypeMark();
 	if (matchToken(TOK_LBRACK)) {
-		// TODO: Check if it's actually an array
 		LOG(DEBUG) << "Indexing array";
+		if (id_tok->getProcedure() || (id_tok->getNumElements() < 1)) {
+			LOG(ERROR) << "Attempt to index non-array symbol " << id_tok->getVal();
+		}
 		scan();
 		TypeMark tm_idx = expression();
 		type_checker.checkArrayIndex(tm_idx);
