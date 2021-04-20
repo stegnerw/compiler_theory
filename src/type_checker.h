@@ -16,6 +16,8 @@ public:
 			const TypeMark&);
 	bool checkCompatible(const TypeMark&, const TypeMark&);
 	bool checkArrayIndex(const TypeMark&);
+	bool checkArraySize(std::shared_ptr<Token>, const int&);
+	bool checkArraySize(std::shared_ptr<Token>, const int&, const int&);
 
 private:
 };
