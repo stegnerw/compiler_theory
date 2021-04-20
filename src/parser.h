@@ -44,7 +44,7 @@ private:
 	int bound();
 	void statement();
 	TypeMark procedureCall();
-	void assigmentStatement();
+	void assignmentStatement();
 	TypeMark destination(int&);
 	void ifStatement();
 	void loopStatement();

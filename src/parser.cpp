@@ -88,6 +88,7 @@ bool Parser::expectToken(const TokenType& t) {
 	}
 	LOG(ERROR) << "Expected " << Token::getTokenName(t)
 			<< ", got " << tok->getStr() << " instead";
+	// TODO: Panic mode (not done here but this should cause panic mode))
 	return false;
 }
 
@@ -164,8 +165,8 @@ void Parser::declaration(bool is_global) {
 		LOG(ERROR) << "Unexpected token: " << tok->getStr();
 		LOG(ERROR) << "Expected: " << Token::getTokenName(TOK_RW_PROC) << " or "
 				<< Token::getTokenName(TOK_RW_VAR);
-		scan();  // TODO: Do I want to scan here? Other ways to handle errors?
-		// TODO: This should go to panick mode.
+		// TODO: Panic mode
+		scan();
 	}
 }
 
@@ -213,6 +214,7 @@ void Parser::parameterList() {
 	std::shared_ptr<IdToken> par_tok = parameter();
 	if (!par_tok->isValid()) {
 		LOG(ERROR) << "Ill-formed parameter: " << par_tok->getStr() << "; skipping";
+		// TODO: Panic mode
 	} else {
 		function_stack.top()->addParam(par_tok);
 	}
@@ -292,6 +294,7 @@ TypeMark Parser::typeMark() {
 	}
 	else {
 		LOG(ERROR) << "Expected type mark, got: " << tok->getVal();
+		// TODO: Panic mode
 	}
 	scan();
 	return tm;
@@ -299,7 +302,6 @@ TypeMark Parser::typeMark() {
 
 //	<bound> ::=
 //		<number>
-// TODO: Consolidate exit points of this function for readability
 int Parser::bound() {
 	LOG(DEBUG) << "<bound>";
 	std::shared_ptr<Token> num_tok = number();
@@ -328,7 +330,7 @@ int Parser::bound() {
 void Parser::statement() {
 	LOG(DEBUG) << "<statement>";
 	if (matchToken(TOK_IDENT)) {
-		assigmentStatement();
+		assignmentStatement();
 	} else if (matchToken(TOK_RW_IF)) {
 		ifStatement();
 	} else if (matchToken(TOK_RW_FOR)) {
@@ -338,6 +340,7 @@ void Parser::statement() {
 	} else {
 		LOG(ERROR) << "Unexpected token: " << tok->getVal()
 				<< "; expected statement";
+		// TODO: Panic mode
 	}
 }
 
@@ -348,6 +351,8 @@ TypeMark Parser::procedureCall() {
 	std::shared_ptr<IdToken> id_tok = identifier(true);
 	if (!id_tok->getProcedure()) {
 		LOG(ERROR) << "Expected procedure; got variable " << id_tok->getVal();
+		// TODO: Panic here? Or just kinda go for it?
+		// Thinking no panic here because this case should really never happen, ever
 	}
 	expectToken(TOK_LPAREN);
 	scan();
@@ -361,7 +366,7 @@ TypeMark Parser::procedureCall() {
 
 //	<assignment_statement> ::=
 //		<destination> `:=' <expression>
-void Parser::assigmentStatement() {
+void Parser::assignmentStatement() {
 	LOG(DEBUG) << "<assignment_statement>";
 	int dest_size = 0;
 	TypeMark tm_dest = destination(dest_size);
@@ -452,7 +457,7 @@ void Parser::loopStatement() {
 	scan();
 	expectToken(TOK_LPAREN);
 	scan();
-	assigmentStatement();
+	assignmentStatement();
 	expectToken(TOK_SEMICOL);
 	scan();
 
