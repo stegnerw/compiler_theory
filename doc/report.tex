@@ -1,0 +1,93 @@
+\documentclass[letterpaper, 12pt, titlepage]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage[margin=1in]{geometry}
+\usepackage[]{parskip}
+\usepackage{graphicx}
+\usepackage{paralist} % compactitem
+\usepackage{multirow}
+\usepackage{longtable}
+\usepackage{float}
+
+% Custom commands
+\newcommand{\figRef}[1]{Figure \ref{#1}}
+\newcommand{\tabRef}[1]{Table \ref{#1}}
+\newcommand{\eqRef}[1]{(\ref{#1})}
+
+\title{Compiler Project Report}
+\author{
+	Wayne Stegner
+}
+\date{
+	\today
+}
+
+\begin{document}
+	\maketitle
+	\par \textbf{Code Structure}
+	\par My compiler is written in C++ with an object-oriented approach.
+	It contains the scanner, parser, and type checker for now, but I intend to
+	complete code generation and runtime this Summer.
+	The \texttt{Parser} class facilitates the overall flow of the
+	recursive-descent parse.
+	It interacts with the \texttt{Scanner} class to grab one token at a time,
+	only ever looking at the current token.
+	While the \texttt{Scanner} produces the tokens, it does not add them to the
+	symbol table because it lacks semantic information such as scope and whether
+	it should lookup or insert the symbol.
+	Instead, the \texttt{Parser} inserts/looks up symbols through the
+	\texttt{Environment} at appropriate places in the parse tree.
+	\par The \texttt{Environment} abstracts scoping from the symbol table except
+	for the case of inserting a symbol, where the \texttt{Parser} passes a
+	\texttt{bool} value to distinguish global vs local inserts.
+	The \texttt{Environment} class holds a global \texttt{SymbolTable} object and
+	a local stack of \texttt{SymbolTable} objects to accommodate the scoping
+	requirements.
+	The \texttt{SymbolTable} class is mostly a wrapper to handle lookups and
+	insertions to a STL hash map with string keys and token values.
+
+	\par Tokens are implemented in multiple types using polymorphism, and they also
+	serve as the symbol table entries.
+	The base \texttt{Token} class stores a \texttt{TokenType} enumeration to help
+	the parser identify grammar elements, a string denoting the token value, and a
+	\texttt{TypeMark} enumeration for data type information.
+	The \texttt{IdToken} class is used for identifiers, both variables and
+	procedures.
+	This class inherits from \texttt{Token}, adding an integer for counting
+	elements, a boolean for denoting procedures, and a vector of \texttt{IdToken}s
+	for holding parameter types.
+	The \texttt{LiteralToken} template class is used to allow different data
+	type values to be returned from the \texttt{Scanner}.
+	Each token is returned from the scanner as a base \texttt{Token} pointer, and
+	they are dynamically cast to child classes as needed in the \texttt{Parser}.
+
+	\par The \texttt{TypeChecker} class holds functions useful for checking
+	compatibilities of data types and array sizes for various operators.
+	The functions are invoked during the parser, but the functions abstract some
+	semantics regarding type matching (e.g.\ floats and integers are compatible
+	for addition, but not a bitwise operator).
+	The array size checking ensures that the arrays are either the same size or
+	one of the operands is a scalar value.
+
+	\par For error recovery, the parser takes various actions depending on the
+	error.
+	Type mismatches or size mismatches generally just require reporting the error
+	and then continuing the parse as normal.
+	However, the case of an unexpected token typically results in a panic mode
+	recovery.
+	Recovery mode uses \texttt{;} and \texttt{EOF} as sync tokens, and when a
+	panic happens in either a \texttt{<declaration>} or a \texttt{<statement>},
+	the current production is abandoned.
+	I plan to make error recovery a bit more intelligent as I finish the compiler
+	this Summer.
+
+	\par \textbf{Running the Compiler}
+	\par Prerequisite: \texttt{make} and \texttt{gcc} are installed.
+	Run \texttt{make} in the project root directory, producing the executable
+	\texttt{./bin/compiler}.
+	Run \texttt{./bin/compiler -h} for usage.
+	Example: \texttt{./bin/compiler -l 1 -i code.src -l log.txt} compiles
+	\texttt{./code.src} with log level info and saves the full debug log to
+	\texttt{./log.txt}.
+	No binary is produced (yet).
+\end{document}
