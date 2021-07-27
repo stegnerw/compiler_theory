@@ -13,10 +13,12 @@
 #include "token.h"
 #include "type_checker.h"
 
-Parser::Parser() : env(new Environment()), scanner(env), type_checker() {}
+Parser::Parser() : env(new Environment()), scanner(env), type_checker(),
+		panic_mode(false) {}
 
 bool Parser::init(const std::string& src_file) {
 	bool init_success = true;
+	panic_mode = false;
 	if (!scanner.init(src_file)) {
 		init_success = false;
 		LOG(ERROR) << "Failed to initialize parser";
@@ -37,6 +39,9 @@ bool Parser::parse() {
 	expectToken(TOK_PERIOD);
 	scan();
 	LOG(INFO) << "Done parsing";
+	if (LOG::hasErrored()) {
+		LOG(WARN) << "Parsing had errors; no code generated";
+	}
 	if (tok->getType() != TOK_EOF) {
 		LOG(WARN) << "Done parsing but not EOF.";
 	}
@@ -88,17 +93,41 @@ bool Parser::expectToken(const TokenType& t) {
 	}
 	LOG(ERROR) << "Expected " << Token::getTokenName(t)
 			<< ", got " << tok->getStr() << " instead";
+	panic();
 	return false;
+}
+
+void Parser::panic() {
+
+	// Flag that panic mode happened so the rest of the parser can respond
+	panic_mode = true;
+	LOG(ERROR) << "Start panic mode";
+	LOG(ERROR) << "Scanning for `;' or `EOF'";
+
+	// Eat tokens until a sync point
+	// Currently syncing on semicolon and EOF
+	// Pretty basic for now, but a more advanced solution would require
+	// significant infrastructure and refactoring
+	while (tok->getType() != TOK_SEMICOL && tok->getType() != TOK_EOF) {
+		scan();
+	}
 }
 
 //	<program_header> ::=
 //		`program' <identifier> `is'
 void Parser::programHeader() {
+
+	// Not going to worry about panic mode here.
+	// If this part of the program is not correct, I have little hope for the
+	// rest of the program...
 	LOG(DEBUG) << "<program_header>";
 	expectToken(TOK_RW_PROG);
+	if (panic_mode) return;
 	scan();
 	identifier(false);
+	if (panic_mode) return;
 	expectToken(TOK_RW_IS);
+	if (panic_mode) return;
 	scan();
 }
 
@@ -128,7 +157,10 @@ void Parser::declarations(bool is_global) {
 	// FIRST(<declaration>) = {global, procedure, variable}
 	while (matchToken(TOK_RW_GLOB) || matchToken(TOK_RW_PROC)
 			|| matchToken(TOK_RW_VAR)) {
+		panic_mode = false;  // Reset panic mode
 		declaration(is_global);
+
+		// Even if we entered panic mode, this should pass unless we hit EOF
 		expectToken(TOK_SEMICOL);
 		scan();
 	}
@@ -141,7 +173,10 @@ void Parser::statements() {
 	// FIRST(<statement>) = {<identifier>, if, for, return}
 	while(matchToken(TOK_IDENT) || matchToken(TOK_RW_IF) || matchToken(TOK_RW_FOR)
 			|| matchToken(TOK_RW_RET)) {
+		panic_mode = false;  // Reset panic mode
 		statement();
+
+		// Even if we entered panic mode, this should pass unless we hit EOF
 		expectToken(TOK_SEMICOL);
 		scan();
 	}
@@ -164,8 +199,7 @@ void Parser::declaration(bool is_global) {
 		LOG(ERROR) << "Unexpected token: " << tok->getStr();
 		LOG(ERROR) << "Expected: " << Token::getTokenName(TOK_RW_PROC) << " or "
 				<< Token::getTokenName(TOK_RW_VAR);
-		scan();  // TODO: Do I want to scan here? Other ways to handle errors?
-		// TODO: This should go to panick mode.
+		panic();
 	}
 }
 
@@ -173,7 +207,9 @@ void Parser::declaration(bool is_global) {
 //		<procedure_header> <procedure_body>
 void Parser::procedureDeclaration(const bool& is_global) {
 	LOG(DEBUG) << "<procedure_declaration>";
+	panic_mode = false;  // Reset panic mode
 	procedureHeader(is_global);
+	panic_mode = false;  // Reset panic mode
 	procedureBody();
 	pop_scope();
 }
@@ -182,13 +218,13 @@ void Parser::procedureDeclaration(const bool& is_global) {
 //		`procedure' <identifier> `:' <type_mark> `('[<parameter_list>]`)'
 void Parser::procedureHeader(const bool& is_global) {
 	LOG(DEBUG) << "<procedure_header>";
-
-	// This should not happen but just in case
 	expectToken(TOK_RW_PROC);
+	if (panic_mode) return;  // No need to continue
 	scan();
 	std::shared_ptr<IdToken> id_tok = identifier(false);
 	env->insert(id_tok->getVal(), id_tok, is_global);
 	expectToken(TOK_COLON);
+	if (panic_mode) return;  // No need to continue
 	scan();
 	TypeMark tm = typeMark();
 	id_tok->setTypeMark(tm);
@@ -251,22 +287,27 @@ void Parser::procedureBody() {
 //		`variable' <identifier> `:' <type_mark> [`['<bound>`]']
 std::shared_ptr<IdToken> Parser::variableDeclaration(const bool& is_global) {
 	LOG(DEBUG) << "<variable_declaration>";
+
+	// Making this in case panic mode happens before the call to identifier()
+	// I don't want to return a nullptr
+	std::shared_ptr<IdToken> id_tok(new IdToken(TOK_INVALID, ""));
 	expectToken(TOK_RW_VAR);
+	if (panic_mode) return id_tok;  // No need to continue
 	scan();
-	std::shared_ptr<IdToken> id_tok = identifier(false);
+	id_tok = identifier(false);
 	env->insert(id_tok->getVal(), id_tok, is_global);
 	expectToken(TOK_COLON);
+	if (panic_mode) return id_tok;  // No need to continue
 	scan();
 	TypeMark tm = typeMark();
-	if (id_tok->isValid()) {
-		id_tok->setTypeMark(tm);
-		id_tok->setProcedure(false);
-	}
+	id_tok->setTypeMark(tm);
+	id_tok->setProcedure(false);
 	if (matchToken(TOK_LBRACK)) {
 		LOG(DEBUG) << "Variable is an array";
 		scan();
 		id_tok->setNumElements(bound());
 		expectToken(TOK_RBRACK);
+		if (panic_mode) return id_tok;  // No need to continue
 		scan();
 	}
 	LOG(DEBUG) << "Declared variable " << id_tok->getStr();
@@ -292,6 +333,8 @@ TypeMark Parser::typeMark() {
 	}
 	else {
 		LOG(ERROR) << "Expected type mark, got: " << tok->getVal();
+		panic();
+		return tm;
 	}
 	scan();
 	return tm;
@@ -299,7 +342,6 @@ TypeMark Parser::typeMark() {
 
 //	<bound> ::=
 //		<number>
-// TODO: Consolidate exit points of this function for readability
 int Parser::bound() {
 	LOG(DEBUG) << "<bound>";
 	std::shared_ptr<Token> num_tok = number();
@@ -328,7 +370,7 @@ int Parser::bound() {
 void Parser::statement() {
 	LOG(DEBUG) << "<statement>";
 	if (matchToken(TOK_IDENT)) {
-		assigmentStatement();
+		assignmentStatement();
 	} else if (matchToken(TOK_RW_IF)) {
 		ifStatement();
 	} else if (matchToken(TOK_RW_FOR)) {
@@ -338,6 +380,7 @@ void Parser::statement() {
 	} else {
 		LOG(ERROR) << "Unexpected token: " << tok->getVal()
 				<< "; expected statement";
+		panic();
 	}
 }
 
@@ -350,22 +393,24 @@ TypeMark Parser::procedureCall() {
 		LOG(ERROR) << "Expected procedure; got variable " << id_tok->getVal();
 	}
 	expectToken(TOK_LPAREN);
+	if (panic_mode) return TYPE_NONE;  // No need to continue
 	scan();
 	if (!matchToken(TOK_RPAREN)) {
 		argumentList(0, id_tok);
 	}
 	expectToken(TOK_RPAREN);
-	scan();
+	if (!panic_mode) scan();
 	return id_tok->getTypeMark();
 }
 
 //	<assignment_statement> ::=
 //		<destination> `:=' <expression>
-void Parser::assigmentStatement() {
+void Parser::assignmentStatement() {
 	LOG(DEBUG) << "<assignment_statement>";
 	int dest_size = 0;
 	TypeMark tm_dest = destination(dest_size);
 	expectToken(TOK_OP_ASS);
+	if (panic_mode) return;  // No need to continue
 	std::shared_ptr<Token> op_tok = tok;
 	scan();
 	int expr_size = 0;
@@ -379,6 +424,7 @@ void Parser::assigmentStatement() {
 TypeMark Parser::destination(int& size) {
 	LOG(DEBUG) << "<destination>";
 	expectToken(TOK_IDENT);
+	if (panic_mode) return TYPE_NONE;  // No need to continue
 	std::shared_ptr<IdToken> id_tok = identifier(true);
 	if (id_tok->getProcedure()) {
 		LOG(ERROR) << "Expected variable; got procedure " << id_tok->getVal();
@@ -399,6 +445,7 @@ TypeMark Parser::destination(int& size) {
 			LOG(ERROR) << "Invalid index; Expected scalar, got array";
 		}
 		expectToken(TOK_RBRACK);
+		if (panic_mode) return TYPE_NONE;  // No need to continue
 		scan();
 	}
 	return tm;
@@ -411,8 +458,10 @@ TypeMark Parser::destination(int& size) {
 void Parser::ifStatement() {
 	LOG(DEBUG) << "<if_statement>";
 	expectToken(TOK_RW_IF);
+	if (panic_mode) return;  // No need to continue
 	scan();
 	expectToken(TOK_LPAREN);
+	if (panic_mode) return;  // No need to continue
 	scan();
 
 	// Ensure expression parses to `bool'
@@ -427,8 +476,10 @@ void Parser::ifStatement() {
 		LOG(ERROR) << "Invalid if statement; expected scalar, got array";
 	}
 	expectToken(TOK_RPAREN);
+	if (panic_mode) return;  // No need to continue
 	scan();
 	expectToken(TOK_RW_THEN);
+	if (panic_mode) return;  // No need to continue
 	scan();
 	statements();
 	if (matchToken(TOK_RW_ELSE)) {
@@ -437,8 +488,10 @@ void Parser::ifStatement() {
 		statements();
 	}
 	expectToken(TOK_RW_END);
+	if (panic_mode) return;  // No need to continue
 	scan();
 	expectToken(TOK_RW_IF);
+	if (panic_mode) return;  // No need to continue
 	scan();
 }
 
@@ -449,11 +502,14 @@ void Parser::ifStatement() {
 void Parser::loopStatement() {
 	LOG(DEBUG) << "<loop_statement>";
 	expectToken(TOK_RW_FOR);
+	if (panic_mode) return;  // No need to continue
 	scan();
 	expectToken(TOK_LPAREN);
+	if (panic_mode) return;  // No need to continue
 	scan();
-	assigmentStatement();
+	assignmentStatement();
 	expectToken(TOK_SEMICOL);
+	if (panic_mode) return;  // No need to continue
 	scan();
 
 	// Ensure expression parses to `bool'
@@ -468,19 +524,23 @@ void Parser::loopStatement() {
 		LOG(ERROR) << "Invalid loop statement; expected scalar, got array";
 	}
 	expectToken(TOK_RPAREN);
+	if (panic_mode) return;  // No need to continue
 	scan();
 	statements();
 	expectToken(TOK_RW_END);
+	if (panic_mode) return;  // No need to continue
 	scan();
 	expectToken(TOK_RW_FOR);
+	if (panic_mode) return;  // No need to continue
 	scan();
 }
 
 //	<return_statement> ::=
 //		`return' <expression>
-TypeMark Parser::returnStatement() {
+void Parser::returnStatement() {
 	LOG(DEBUG) << "<return_statement>";
 	expectToken(TOK_RW_RET);
+	if (panic_mode) return;  // No need to continue
 	scan();
 
 	// Make sure <expression> type matches return type for this function
@@ -497,7 +557,6 @@ TypeMark Parser::returnStatement() {
 	if (expr_size > 0) {
 		LOG(ERROR) << "Invalid return type; expected scalar, got array";
 	}
-	return tm_ret;
 }
 
 //	<identifier> ::=
@@ -710,6 +769,7 @@ TypeMark Parser::factor(int& size) {
 		scan();
 		tm = expression(size);
 		expectToken(TOK_RPAREN);
+		if (panic_mode) return tm;  // No need to continue
 		scan();
 
 	// <procedure_call> or <name>
@@ -755,6 +815,7 @@ TypeMark Parser::factor(int& size) {
 		LOG(ERROR) << "Unexpected token: " << tok->getStr();
 		tm = TYPE_NONE;
 		size = 0;
+		panic();
 	}
 	return tm;
 }
@@ -783,6 +844,7 @@ TypeMark Parser::name(int& size) {
 			LOG(ERROR) << "Invalid index; expected scalar, got array";
 		}
 		expectToken(TOK_RBRACK);
+		if (panic_mode) return tm;  // No need to continue
 		scan();
 	}
 	return tm;
@@ -824,7 +886,7 @@ std::shared_ptr<Token> Parser::number() {
 	if (expectToken(TOK_NUM)) {
 		num_tok = tok;
 	}
-	scan();
+	if (!panic_mode) scan();
 	return num_tok;
 }
 
@@ -840,6 +902,6 @@ std::shared_ptr<LiteralToken<std::string>> Parser::string() {
 	} else {
 		LOG(ERROR) << "Using empty string";
 	}
-	scan();
+	if (!panic_mode) scan();
 	return str_tok;
 }

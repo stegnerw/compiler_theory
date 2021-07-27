@@ -24,9 +24,11 @@ private:
 	TypeChecker type_checker;
 	std::shared_ptr<Token> tok;
 	std::stack<std::shared_ptr<IdToken>> function_stack;
+	bool panic_mode;
 	void scan();
 	bool matchToken(const TokenType&);
 	bool expectToken(const TokenType&);
+	void panic();
 	void push_scope(std::shared_ptr<IdToken>);
 	void pop_scope();
 	void programHeader();
@@ -44,11 +46,11 @@ private:
 	int bound();
 	void statement();
 	TypeMark procedureCall();
-	void assigmentStatement();
+	void assignmentStatement();
 	TypeMark destination(int&);
 	void ifStatement();
 	void loopStatement();
-	TypeMark returnStatement();
+	void returnStatement();
 	std::shared_ptr<IdToken> identifier(const bool&);
 	TypeMark expression(int&);
 	TypeMark expressionPrime(const TypeMark&, int&);
