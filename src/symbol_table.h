@@ -11,14 +11,14 @@ typedef std::unordered_map<std::string, std::shared_ptr<Token>> SymbolMap;
 
 class SymbolTable {
 public:
-	SymbolTable();
-	~SymbolTable();
-	std::shared_ptr<Token> lookup(const std::string&);
-	bool insert(const std::string&, std::shared_ptr<Token>);
-	std::string getStr();
+  SymbolTable();
+  ~SymbolTable();
+  std::shared_ptr<Token> lookup(const std::string&);
+  bool insert(const std::string&, std::shared_ptr<Token>);
+  std::string getStr();
 
 private:
-	SymbolMap symbol_map;
+  SymbolMap symbol_map;
 };
 
 #endif // SYMBOL_TABLE_H
