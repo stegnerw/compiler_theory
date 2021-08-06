@@ -115,7 +115,7 @@ std::shared_ptr<Token> Scanner::getToken() {
       }
       // If there is a decimal make it a float, else int
       if (v.find('.') == std::string::npos) {
-        tok = std::shared_ptr<Token>(new LiteralToken<int>(TOK_NUM,
+        tok = std::shared_ptr<Token>(new LiteralToken<float>(TOK_NUM,
             std::stoi(v), TYPE_INT));
       } else {
         tok = std::shared_ptr<Token>(new LiteralToken<float>(TOK_NUM,

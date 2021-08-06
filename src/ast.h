@@ -13,22 +13,24 @@ namespace ast {
   class Node {
    public:
     Node() = delete;
-    Node(std::string name) : name(name), tm(TYPE_NONE) {}
-    Node(std::string name, TypeMark tm) : name(name), tm(tm) {}
+    Node(std::string name) : name(name), tm(TYPE_NONE), size(0) {}
+    Node(std::string name, TypeMark tm) : name(name), tm(tm), size(0) {}
     virtual ~Node() = 0;
     //virtual bool typeCheck() = 0;
     virtual std::string getName() { return name; }
     TypeMark getTypeMark() { return tm; }
+    int getSize() { return size; }
 
    protected:
     std::string name;
-    TypeMark tm;
+    TypeMark tm;  // Propagate during type checking
+    int size;  // Propagate during type checking
   };
 
   template <class T>
   class Literal : public Node {
    public:
-    Literal<T>(const T& val, const TypeMark& tm) :
+    Literal<T>(const TypeMark& tm, const T& val) :
       Node("Literal", tm),
       val(val) {}
 
@@ -144,14 +146,14 @@ namespace ast {
   class ArgumentList : public Node {
    public:
     ArgumentList(std::shared_ptr<Node> expr,
-        std::unique_ptr<ArgumentList> arg_list) :
+        std::unique_ptr<ArgumentList> next_arg) :
       Node("Argument List"),
       expr(expr),
-      arg_list(std::move(arg_list)) {}
+      next_arg(std::move(next_arg)) {}
 
    protected:
     std::shared_ptr<Node> expr;
-    std::unique_ptr<ArgumentList> arg_list;
+    std::unique_ptr<ArgumentList> next_arg;
   };
 
   class ProcedureCall : public Node {
@@ -168,17 +170,18 @@ namespace ast {
   };
 
   // also Parameter
+  // TODO: Type checking node: check bound size
   class VariableDeclaration : public Node {
    public:
-    VariableDeclaration(std::shared_ptr<IdToken> id_tok,
-        std::unique_ptr<Literal<int>> bound) :
-      Node("Variable Declaration"),
+    VariableDeclaration(const TypeMark& tm, std::shared_ptr<IdToken> id_tok,
+        std::unique_ptr<Literal<float>> bound) :
+      Node("Variable Declaration", tm),
       id_tok(id_tok),
       bound(std::move(bound)) {}
 
    protected:
     std::shared_ptr<IdToken> id_tok;
-    std::unique_ptr<Literal<int>> bound;
+    std::unique_ptr<Literal<float>> bound;
   };
 
   class ProcedureBody : public Node {
@@ -197,23 +200,25 @@ namespace ast {
   class ParameterList : public Node {
    public:
     ParameterList(std::unique_ptr<VariableDeclaration> var_decl,
-        std::unique_ptr<ParameterList> param_list) :
+        std::unique_ptr<ParameterList> next_param) :
       Node("Parameter List"),
       var_decl(std::move(var_decl)),
-      param_list(std::move(param_list)) {}
+      next_param(std::move(next_param)) {}
 
    protected:
     std::unique_ptr<VariableDeclaration> var_decl;
-    std::unique_ptr<ParameterList> param_list;
+    std::unique_ptr<ParameterList> next_param;
   };
 
   class ProcedureHeader : public Node {
    public:
-    ProcedureHeader(std::shared_ptr<IdToken> id_tok, TypeMark tm,
+    ProcedureHeader(const TypeMark& tm, const bool& global,
+        std::shared_ptr<IdToken> id_tok,
         std::unique_ptr<ParameterList> param_list) :
-      Node("Procedure Header", tm), id_tok(id_tok) {}
+      Node("Procedure Header", tm), global(global), id_tok(id_tok) {}
 
    protected:
+    bool global;
     std::shared_ptr<IdToken> id_tok;
     std::unique_ptr<ParameterList> param_list;
   };

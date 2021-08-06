@@ -93,7 +93,8 @@ bool Parser::expect(const TokenType& t) {
 
 bool Parser::expectScan(const TokenType& t) {
   bool matched = expect(t);
-  scan();
+  // Scan only if it matched
+  if (matched) scan();
   return matched;
 }
 
@@ -153,7 +154,7 @@ std::list<std::unique_ptr<ast::Node>> Parser::declarations(bool is_global) {
   while (match(TOK_RW_GLOB) || match(TOK_RW_PROC)
       || match(TOK_RW_VAR)) {  // TODO: !match(FOLLOW(<declaration>) instead??
       // FOLLOW(<declaration>) is always TOK_RW_BEG
-    auto decl = declaration(is_global);
+      std::unique_ptr<ast::Node> decl = declaration(is_global);
     if (decl == nullptr || !expectScan(TOK_SEMICOL)) {
       panic();  // TODO: Do I want to do something smarter?
       // TODO: Add TOK_RW_BEG to sync point
@@ -176,7 +177,7 @@ std::list<std::unique_ptr<ast::Node>> Parser::statements() {
       || match(TOK_RW_RET)) {  // TODO: !match(FOLLOW(<statement>) instead??
       // FOLLOW(<statement>) is always TOK_RW_END
     panic_mode = false;  // Reset panic mode
-    auto stmt = statement();
+    std::unique_ptr<ast::Node> stmt = statement();
     if (stmt == nullptr || !expectScan(TOK_SEMICOL)) {
       panic();  // TODO: Again, something smarter?
       // TODO: Add TOK_RW_END to sync point
@@ -192,18 +193,15 @@ std::list<std::unique_ptr<ast::Node>> Parser::statements() {
 //  | [`global'] <variable_declaration>
 std::unique_ptr<ast::Node> Parser::declaration(bool is_global) {
   LOG(DEBUG) << "<declaration>";
-
-  // Detect the global keyword separately to aid the recursion
-  bool is_global_kw = false;
   std::unique_ptr<ast::Node> decl = nullptr;
   if (match(TOK_RW_GLOB)) {
-    is_global_kw = true;
+    is_global = true;
     scan();
   }
   if (match(TOK_RW_PROC)) {
-    decl = procedureDeclaration(is_global || is_global_kw);
+    decl = procedureDeclaration(is_global);
   } else if(match(TOK_RW_VAR)) {
-    decl = variableDeclaration(is_global || is_global_kw);
+    decl = variableDeclaration(is_global);
   } else {
     LOG(ERROR) << "Unexpected token: " << tok->getStr();
     LOG(ERROR) << "Expected: " << Token::getTokenName(TOK_RW_PROC) << " or "
@@ -221,11 +219,11 @@ Parser::procedureDeclaration(const bool& is_global) {
   std::unique_ptr<ast::ProcedureBody> proc_body = procedureBody();
   popScope();
 
-  // Verify parse was okay
   if (proc_hdr == nullptr || proc_body == nullptr) {
     LOG(ERROR) << "Failed to parse procedure";
     return nullptr;
   }
+  return std::make_unique<ast::ProcedureDeclaration>(proc_hdr, proc_body);
 }
 
 //  <procedure_header>
@@ -244,33 +242,41 @@ Parser::procedureHeader(const bool& is_global) {
   // Begin new scope
   pushScope(id_tok);  // This adds id_tok to the new scope for recursion
   expectScan(TOK_LPAREN);
+  std::unique_ptr<ast::ParameterList> param_list = nullptr;
   if (match(TOK_RW_VAR)) {
-    parameterList();
+    param_list = parameterList();
   }
   expectScan(TOK_RPAREN);
+
+  if (id_tok == nullptr) {  // It's okay for param_list to be nullptr
+    LOG(ERROR) << "Failed to parse procedure header";
+    return nullptr;
+  }
+  return std::make_unique<ast::ProcedureHeader>(tm, is_global, id_tok,
+      std::move(param_list));
 }
 
 //  <parameter_list> ::=
 //    <parameter>`,' <parameter_list>
 //  | <parameter>
-void Parser::parameterList() {
+// TODO: This could be a little cleaner if I have time...
+std::unique_ptr<ast::ParameterList> Parser::parameterList() {
   LOG(DEBUG) << "<parameter_list>";
-  std::shared_ptr<IdToken> par_tok = parameter();
-  if (!par_tok->isValid()) {
-    LOG(ERROR) << "Ill-formed parameter: " << par_tok->getStr() << "; skipping";
-  } else {
-    function_stack.top()->addParam(par_tok);
+  std::unique_ptr<ast::VariableDeclaration> par_tok = parameter();
+  if (par_tok == nullptr) {
+    LOG(ERROR) << "Ill-formed parameter; skipping";
+    return nullptr;
   }
-
   if (match(TOK_COMMA)) {
     scan();
-    parameterList();
+    return std::make_unique<ast::ParameterList>(par_tok, parameterList());
   }
+  return std::make_unique<ast::ParameterList>(par_tok, nullptr);
 }
 
 //  <parameter> ::=
 //    <variable_declaration>
-std::shared_ptr<IdToken> Parser::parameter() {
+std::unique_ptr<ast::VariableDeclaration> Parser::parameter() {
   LOG(DEBUG) << "<parameter>";
   return variableDeclaration(false);
 }
@@ -280,13 +286,18 @@ std::shared_ptr<IdToken> Parser::parameter() {
 //    `begin'
 //      <statements>
 //    `end' `procedure'
-void Parser::procedureBody() {
+std::unique_ptr<ast::ProcedureBody> Parser::procedureBody() {
   LOG(DEBUG) << "<procedure_body>";
-  declarations(false);
-  expectScan(TOK_RW_BEG);
-  statements();
-  expectScan(TOK_RW_END);
-  expectScan(TOK_RW_PROC);
+  std::list<std::unique_ptr<ast::Node>> decl_list = declarations(false);
+  if (!expectScan(TOK_RW_BEG)) {
+    return nullptr;
+  }
+  std::list<std::unique_ptr<ast::Node>> stmt_list = statements();
+  if (!expectScan(TOK_RW_END) || !expectScan(TOK_RW_PROC)) {
+    return nullptr;
+  }
+  return std::make_unique<ast::ProcedureBody>(std::move(decl_list),
+      std::move(stmt_list));
 }
 
 //  <variable_declaration> ::=
@@ -294,25 +305,29 @@ void Parser::procedureBody() {
 std::unique_ptr<ast::VariableDeclaration>
 Parser::variableDeclaration(const bool& is_global) {
   LOG(DEBUG) << "<variable_declaration>";
-
-  // Making this in case panic mode happens before the call to identifier()
-  // I don't want to return a nullptr
-  std::shared_ptr<IdToken> id_tok(new IdToken(TOK_INVALID, ""));
   expectScan(TOK_RW_VAR);
-  id_tok = identifier(false);
+  std::shared_ptr<IdToken> id_tok = identifier(false);
+  if (id_tok == nullptr) {
+    LOG(ERROR) << "Invalid identifier; skipping variable declaration";
+    return nullptr;
+  }
   env->insert(id_tok->getVal(), id_tok, is_global);
   expectScan(TOK_COLON);
   TypeMark tm = typeMark();
   id_tok->setTypeMark(tm);
   id_tok->setProcedure(false);
+
+  // Array shenanigans
+  std::unique_ptr<ast::Literal<float>> bound_node = nullptr;
   if (match(TOK_LBRACK)) {
     LOG(DEBUG) << "Variable is an array";
     scan();
-    id_tok->setNumElements(bound());
+    bound_node = bound();
     expectScan(TOK_RBRACK);
   }
   LOG(DEBUG) << "Declared variable " << id_tok->getStr();
-  return id_tok;
+  return std::make_unique<ast::VariableDeclaration>(tm, id_tok,
+      std::move(bound_node));
 }
 
 //  <type_mark> ::=
@@ -343,24 +358,14 @@ TypeMark Parser::typeMark() {
 
 //  <bound> ::=
 //    <number>
-int Parser::bound() {
+std::unique_ptr<ast::Literal<float>> Parser::bound() {
   LOG(DEBUG) << "<bound>";
-  std::shared_ptr<Token> num_tok = number();
-  std::shared_ptr<LiteralToken<int>> bound_tok =
-      std::dynamic_pointer_cast<LiteralToken<int>>(num_tok);
-  if (bound_tok) {
-    int bound_val = bound_tok->getVal();
-    if (bound_val < 1) {
-      LOG(ERROR) << "Bound must be at least 1; received bound " << bound_val;
-      LOG(WARN) << "Using bound of 1";
-      return 1;
-    }
-    return bound_val;
-  } else {
-    LOG(ERROR) << "Invalid bound received: " << num_tok->getVal();
-    LOG(WARN) << "Using bound of 1";
-    return 1;
+  std::unique_ptr<ast::Literal<float>> bound_node = number();
+  if (bound_node == nullptr) {
+    LOG(ERROR) << "Failed to parse bound";
+    return nullptr;
   }
+  return bound_node;
 }
 
 //  <statement> ::=
@@ -368,164 +373,163 @@ int Parser::bound() {
 //  | <if_statement>
 //  | <loop_statement>
 //  | <return_statement>
-void Parser::statement() {
+std::unique_ptr<ast::Node> Parser::statement() {
   LOG(DEBUG) << "<statement>";
+  std::unique_ptr<ast::Node> stmt = nullptr;
   if (match(TOK_IDENT)) {
-    assignmentStatement();
+    stmt = assignmentStatement();
   } else if (match(TOK_RW_IF)) {
-    ifStatement();
+    stmt = ifStatement();
   } else if (match(TOK_RW_FOR)) {
-    loopStatement();
+    stmt = loopStatement();
   } else if (match(TOK_RW_RET)) {
-    returnStatement();
+    stmt = returnStatement();
   } else {
     LOG(ERROR) << "Unexpected token: " << tok->getVal()
         << "; expected statement";
-    panic();
   }
+  return stmt;
 }
 
 //  <procedure_call> ::=
 //    <identifier>`('[<argument_list>]`)'
-TypeMark Parser::procedureCall() {
+std::unique_ptr<ast::ProcedureCall> Parser::procedureCall() {
   LOG(DEBUG) << "<procedure_call>";
   std::shared_ptr<IdToken> id_tok = identifier(true);
-  if (!id_tok->getProcedure()) {
-    LOG(ERROR) << "Expected procedure; got variable " << id_tok->getVal();
+  if (id_tok == nullptr || !id_tok->getProcedure()) {
+    LOG(ERROR) << "Failed to parse procedure call identifier";
+    return nullptr;
   }
-  expectScan(TOK_LPAREN);
+  if (!expectScan(TOK_LPAREN)) {
+    LOG(WARN) << "Skipping procedure call";
+    return nullptr;
+  }
+  std::unique_ptr<ast::ArgumentList> arg_list = nullptr;
   if (!match(TOK_RPAREN)) {
-    argumentList(0, id_tok);
+    arg_list = argumentList(id_tok);
   }
-  expectScan(TOK_RPAREN);
-  return id_tok->getTypeMark();
+  if (!expectScan(TOK_RPAREN)) {
+    LOG(WARN) << "Skipping procedure call";
+    return nullptr;
+  }
+  return std::make_unique<ast::ProcedureCall>(id_tok, std::move(arg_list));
 }
 
 //  <assignment_statement> ::=
 //    <destination> `:=' <expression>
-void Parser::assignmentStatement() {
+std::unique_ptr<ast::AssignmentStatement> Parser::assignmentStatement() {
   LOG(DEBUG) << "<assignment_statement>";
-  int dest_size = 0;
-  TypeMark tm_dest = destination(dest_size);
-  expect(TOK_OP_ASS);
+  std::unique_ptr<ast::VariableReference> dest = destination();
   std::shared_ptr<Token> op_tok = tok;
-  scan();
-  int expr_size = 0;
-  TypeMark tm_expr = expression(expr_size);
-  type_checker.checkCompatible(op_tok, tm_dest, tm_expr);
-  type_checker.checkArraySize(op_tok, dest_size, expr_size);
+  if (!expectScan(TOK_OP_ASS)) {
+    LOG(WARN) << "Skipping assignment statement";
+    return nullptr;
+  }
+  std::unique_ptr<ast::Node> expr = expression();
+
+  // Check valid parse
+  if (dest == nullptr || expr == nullptr) {
+    LOG(ERROR) << "Could not parse assignment statement";
+    LOG(WARN) << "Skipping assignment statement";
+    return nullptr;
+  }
+  return std::make_unique<ast::AssignmentStatement>(std::move(dest),
+      std::move(expr));
 }
 
 //  <destination> ::=
 //    <identifier>[`['<expression>`]']
-TypeMark Parser::destination(int& size) {
+std::unique_ptr<ast::VariableReference> Parser::destination() {
   LOG(DEBUG) << "<destination>";
-  expect(TOK_IDENT);
-  if (panic_mode) return TYPE_NONE;  // No need to continue
-  std::shared_ptr<IdToken> id_tok = identifier(true);
-  if (id_tok->getProcedure()) {
-    LOG(ERROR) << "Expected variable; got procedure " << id_tok->getVal();
+  if (!expect(TOK_IDENT)) {
+    LOG(ERROR) << "Identifier not found; skipping destination";
+    return nullptr;
   }
-  TypeMark tm = id_tok->getTypeMark();
-  size = id_tok->getNumElements();
+  std::shared_ptr<IdToken> id_tok = identifier(true);
+  if (id_tok == nullptr || id_tok->getProcedure()) {
+    LOG(ERROR) << "Invalid identifier; skipping destination";
+    return nullptr;
+  }
+
+  // Array shenanigans
+  std::unique_ptr<ast::Node> expr = nullptr;
   if (match(TOK_LBRACK)) {
     LOG(DEBUG) << "Indexing array";
-    size = 0;  // If indexing, it's a single element not an array
     if (id_tok->getProcedure() || (id_tok->getNumElements() < 1)) {
       LOG(ERROR) << "Attempt to index non-array symbol " << id_tok->getVal();
     }
     scan();
-    int idx_size = 0;
-    TypeMark tm_idx = expression(idx_size);
-    type_checker.checkArrayIndex(tm_idx);
-    if (idx_size > 0) {
-      LOG(ERROR) << "Invalid index; Expected scalar, got array";
-    }
+    expr = expression();
     expectScan(TOK_RBRACK);
   }
-  return tm;
+  return std::make_unique<ast::VariableReference>(id_tok, std::move(expr));
 }
 
 //  <if_statement> ::=
 //    `if' `(' <expression> `)' `then' <statements>
 //    [`else' <statements>]
 //    `end' `if'
-void Parser::ifStatement() {
+std::unique_ptr<ast::IfStatement> Parser::ifStatement() {
   LOG(DEBUG) << "<if_statement>";
-  expectScan(TOK_RW_IF);
-  expectScan(TOK_LPAREN);
-
-  // Ensure expression parses to `bool'
-  int expr_size = 0;
-  TypeMark tm = expression(expr_size);
-  if (!type_checker.checkCompatible(tm, TYPE_BOOL)) {
-    LOG(ERROR) << "Invalid if statement expression of type "
-      << Token::getTypeMarkName(tm) << " received";
-    LOG(ERROR) << "If statement expression must resolve to type "
-        << Token::getTypeMarkName(TYPE_BOOL);
-  } else if (expr_size > 0) {
-    LOG(ERROR) << "Invalid if statement; expected scalar, got array";
+  if (!expectScan(TOK_RW_IF) || !expectScan(TOK_LPAREN)) {
+    LOG(ERROR) << "Skipping if statement";
+    return nullptr;
   }
-  expectScan(TOK_RPAREN);
-  expectScan(TOK_RW_THEN);
-  statements();
+  std::unique_ptr<ast::Node> expr = expression();
+  if (expr == nullptr || !expectScan(TOK_RPAREN) || !expectScan(TOK_RW_THEN)) {
+    LOG(ERROR) << "Skipping if statement";
+    return nullptr;
+  }
+  std::list<std::unique_ptr<ast::Node>> then_stmt_list = statements();
+  std::list<std::unique_ptr<ast::Node>> else_stmt_list;
   if (match(TOK_RW_ELSE)) {
     LOG(DEBUG) << "Else";
     scan();
-    statements();
+    else_stmt_list = statements();
   }
   expectScan(TOK_RW_END);
   expectScan(TOK_RW_IF);
+  return std::make_unique<ast::IfStatement>(std::move(expr),
+      std::move(then_stmt_list), std::move(else_stmt_list));
 }
 
 //  <loop_statement> ::=
 //    `for' `(' <assignment_statement>`;' <expression> `)'
 //      <statements>
 //    `end' `for'
-void Parser::loopStatement() {
+std::unique_ptr<ast::LoopStatement> Parser::loopStatement() {
   LOG(DEBUG) << "<loop_statement>";
-  expectScan(TOK_RW_FOR);
-  expectScan(TOK_LPAREN);
-  assignmentStatement();
-  expectScan(TOK_SEMICOL);
-
-  // Ensure expression parses to `bool'
-  int expr_size = 0;
-  TypeMark tm = expression(expr_size);
-  if (!type_checker.checkCompatible(tm, TYPE_BOOL)) {
-    LOG(ERROR) << "Invalid loop statement expression of type "
-      << Token::getTypeMarkName(tm) << " received";
-    LOG(ERROR) << "Loop statement expression must resolve to type "
-        << Token::getTypeMarkName(TYPE_BOOL);
-  } else if (expr_size > 0) {
-    LOG(ERROR) << "Invalid loop statement; expected scalar, got array";
+  if (!expectScan(TOK_RW_FOR) || !expectScan(TOK_LPAREN)) {
+    LOG(ERROR) << "Skipping loop statement";
+    return nullptr;
   }
-  expectScan(TOK_RPAREN);
-  statements();
+  std::unique_ptr<ast::AssignmentStatement> assign = assignmentStatement();
+  if (assign == nullptr || !expectScan(TOK_SEMICOL)) {
+    LOG(ERROR) << "Skipping loop statement";
+    return nullptr;
+  }
+
+  std::unique_ptr<ast::Node> expr = expression();
+  if (expr == nullptr || !expectScan(TOK_RPAREN)) {
+    LOG(ERROR) << "Skipping loop statement";
+    return nullptr;
+  }
+  std::list<std::unique_ptr<ast::Node>> stmt_list = statements();
   expectScan(TOK_RW_END);
   expectScan(TOK_RW_FOR);
+  return std::make_unique<ast::LoopStatement>(std::move(assign),
+      std::move(expr), std::move(stmt_list));
 }
 
 //  <return_statement> ::=
 //    `return' <expression>
-void Parser::returnStatement() {
+std::unique_ptr<ast::ReturnStatement> Parser::returnStatement() {
   LOG(DEBUG) << "<return_statement>";
-  expectScan(TOK_RW_RET);
-
-  // Make sure <expression> type matches return type for this function
-  int expr_size = 0;
-  TypeMark tm_expr = expression(expr_size);
-  TypeMark tm_ret = function_stack.top()->getTypeMark();
-  if (!type_checker.checkCompatible(tm_expr, tm_ret)) {
-    LOG(ERROR) << "Expression type " << Token::getTypeMarkName(tm_expr)
-        << " not compatible with return type "
-        << Token::getTypeMarkName(tm_ret);
+  if (!expectScan(TOK_RW_RET)) {
+    LOG(ERROR) << "Skipping return statement";
+    return nullptr;
   }
-
-  // Return types are scalar only (unless I misunderstand the spec)
-  if (expr_size > 0) {
-    LOG(ERROR) << "Invalid return type; expected scalar, got array";
-  }
+  return std::make_unique<ast::ReturnStatement>(expression());
 }
 
 //  <identifier> ::=
@@ -539,7 +543,7 @@ std::shared_ptr<IdToken> Parser::identifier(const bool& lookup) {
     if (lookup) {
       id_tok = std::dynamic_pointer_cast<IdToken>(env->lookup(id_tok->getVal(),
           true));
-      if (!id_tok) {
+      if (id_tok == nullptr) {
         id_tok = std::shared_ptr<IdToken>(new IdToken(TOK_INVALID, ""));
       }
     }
@@ -551,33 +555,35 @@ std::shared_ptr<IdToken> Parser::identifier(const bool& lookup) {
 
 //  <expression> ::=
 //    [`not'] <arith_op> <expression_prime>
-TypeMark Parser::expression(int& size) {
+std::unique_ptr<ast::Node> Parser::expression() {
   LOG(DEBUG) << "<expression>";
   bool bitwise_not = match(TOK_RW_NOT);
-  std::shared_ptr<Token> op_tok;
   if (bitwise_not) {
     LOG(DEBUG) << "Bitwise not";
-    op_tok = std::shared_ptr<Token>(new Token(TOK_OP_EXPR, "not"));
     scan();
   }
-  TypeMark tm_arith = arithOp(size);
+  //op_tok = std::make_shared<Token>(TOK_OP_EXPR, "not");
+  std::unique_ptr<ast::Node> lhs = arithOp();
 
-  // Check type compatibility for bitwise not
+  // Add not operator if applicable
   if (bitwise_not) {
-    type_checker.checkCompatible(op_tok, tm_arith);
-    type_checker.checkArraySize(op_tok, size);
+    lhs = std::make_unique<ast::UnaryOp>(std::move(lhs),
+        std::make_shared<Token>(TOK_OP_EXPR, "not"));
   }
-  return expressionPrime(tm_arith, size);
+
+  return expressionPrime(std::move(lhs));
 }
 
 //  <expression_prime> ::=
 //    `&' <arith_op> <expression_prime>
 //  | `|' <arith_op> <expression_prime>
 //  | epsilon
-TypeMark Parser::expressionPrime(const TypeMark& tm, int& size) {
+std::unique_ptr<ast::Node>
+Parser::expressionPrime(std::unique_ptr<ast::Node> lhs) {
   LOG(DEBUG) << "<expression_prime>";
   if (!match(TOK_OP_EXPR)) {
     LOG(DEBUG) << "epsilon";
+    return lhs;
   } else {
     std::shared_ptr<Token> op_tok = tok;
     scan();
@@ -593,7 +599,7 @@ TypeMark Parser::expressionPrime(const TypeMark& tm, int& size) {
 
 //  <arith_op> ::=
 //    <relation> <arith_op_prime>
-TypeMark Parser::arithOp(int& size) {
+std::unique_ptr<ast::Node> Parser::arithOp() {
   LOG(DEBUG) << "<arith_op>";
   TypeMark tm_relat = relation(size);
 
@@ -605,7 +611,7 @@ TypeMark Parser::arithOp(int& size) {
 //    `+' <relation> <arith_op_prime>
 //  | `-' <relation> <arith_op_prime>
 //  | epsilon
-TypeMark Parser::arithOpPrime(const TypeMark& tm, int& size) {
+std::unique_ptr<ast::Node> Parser::arithOpPrime(std::unique_ptr<Node> lhs) {
   LOG(DEBUG) << "<arith_op_prime>";
   if (!match(TOK_OP_ARITH)) {
     LOG(DEBUG) << "epsilon";
@@ -631,7 +637,7 @@ TypeMark Parser::arithOpPrime(const TypeMark& tm, int& size) {
 
 //  <relation> ::=
 //    <term> <relation_prime>
-TypeMark Parser::relation(int& size) {
+std::unique_ptr<ast::Node> Parser::relation() {
   LOG(DEBUG) << "<relation>";
   TypeMark tm_term = term(size);
   return relationPrime(tm_term, size);
@@ -645,7 +651,7 @@ TypeMark Parser::relation(int& size) {
 //  | `==' <term> <relation_prime>
 //  | `!=' <term> <relation_prime>
 //  | epsilon
-TypeMark Parser::relationPrime(const TypeMark& tm, int& size) {
+std::unique_ptr<ast::Node> Parser::relationPrime(std::unique_ptr<Node> lhs) {
   LOG(DEBUG) << "<relation_prime>";
   if (!match(TOK_OP_RELAT)) {
     LOG(DEBUG) << "epsilon";
@@ -664,7 +670,7 @@ TypeMark Parser::relationPrime(const TypeMark& tm, int& size) {
 
 //  <term> ::=
 //    <factor> <term_prime>
-TypeMark Parser::term(int& size) {
+std::unique_ptr<ast::Node> Parser::term() {
   LOG(DEBUG) << "<term>";
   TypeMark tm_fact = factor(size);
   return termPrime(tm_fact, size);
@@ -674,7 +680,7 @@ TypeMark Parser::term(int& size) {
 //    `*' <factor> <term_prime>
 //  | `/' <factor> <term_prime>
 //  | epsilon
-TypeMark Parser::termPrime(const TypeMark& tm, int& size) {
+std::unique_ptr<ast::Node> Parser::termPrime(std::unique_ptr<Node> lhs) {
   LOG(DEBUG) << "<term_prime>";
   if (!match(TOK_OP_TERM)) {
     LOG(DEBUG) << "epsilon";
@@ -706,7 +712,7 @@ TypeMark Parser::termPrime(const TypeMark& tm, int& size) {
 //  | <string>
 //  | `true'
 //  | `false'
-TypeMark Parser::factor(int& size) {
+std::unique_ptr<ast::Node> Parser::factor() {
   LOG(DEBUG) << "<factor>";
   TypeMark tm = TYPE_NONE;
 
@@ -789,7 +795,7 @@ TypeMark Parser::factor(int& size) {
 
 //  <name> ::=
 //    <identifier> [`['<expression>`]']
-TypeMark Parser::name(int& size) {
+std::unique_ptr<ast::VariableReference> Parser::name(int& size) {
   LOG(DEBUG) << "<name>";
   std::shared_ptr<IdToken> id_tok = identifier(true);
   if (id_tok->getProcedure()) {
@@ -818,7 +824,8 @@ TypeMark Parser::name(int& size) {
 //  <argument_list> ::=
 //    <expression> `,' <argument_list>
 //  | <expression>
-void Parser::argumentList(const int& idx, std::shared_ptr<IdToken> fun_tok) {
+std::unique_ptr<ast::ArgumentList>
+Parser::argumentList(std::shared_ptr<IdToken> fun_tok) {
   LOG(DEBUG) << "<argument_list>";
   int expr_size = 0;
   TypeMark tm_arg = expression(expr_size);
@@ -845,14 +852,24 @@ void Parser::argumentList(const int& idx, std::shared_ptr<IdToken> fun_tok) {
 
 //  <number> ::=
 //    [0-9][0-9_]*[.[0-9_]*]
-std::shared_ptr<Token> Parser::number() {
+std::unique_ptr<ast::Literal<float>> Parser::number() {
   LOG(DEBUG) << "<number>";
-  std::shared_ptr<Token> num_tok = std::shared_ptr<Token>(new Token());
-  if (expect(TOK_NUM)) {
-    num_tok = tok;
+  std::shared_ptr<Token> num_tok = tok;
+  if (!expectScan(TOK_NUM)) {  // No number
+    LOG(ERROR) << "Expected number, got "
+      << Token::getTokenName(tok->getType());
+    return nullptr;
   }
-  if (!panic_mode) scan();
-  return num_tok;
+
+  // Store all literals as float
+  auto flt_num_tok = std::dynamic_pointer_cast<LiteralToken<float>>(num_tok);
+  if (flt_num_tok == nullptr) {
+    LOG(ERROR) << "Failed to cast number token to float";
+    return nullptr;
+  }
+  auto num_node = std::make_unique<ast::Literal<float>>(
+      flt_num_tok->getTypeMark(), flt_num_tok->getVal());
+  return num_node;
 }
 
 //  <string> ::=

@@ -46,31 +46,27 @@ private:
   std::unique_ptr<ast::ProcedureBody> procedureBody();
   std::unique_ptr<ast::VariableDeclaration> variableDeclaration(const bool&);
   TypeMark typeMark();
-  std::unique_ptr<ast::Literal<int>> bound();
+  std::unique_ptr<ast::Literal<float>> bound();
   std::unique_ptr<ast::Node> statement();
   std::unique_ptr<ast::ProcedureCall> procedureCall();
   std::unique_ptr<ast::AssignmentStatement> assignmentStatement();
-  std::unique_ptr<ast::VariableReference> destination(int&);
+  std::unique_ptr<ast::VariableReference> destination();
   std::unique_ptr<ast::IfStatement> ifStatement();
   std::unique_ptr<ast::LoopStatement> loopStatement();
   std::unique_ptr<ast::ReturnStatement> returnStatement();
-  // TODO: Make this a ast::Node type? Would be more consistent
   std::shared_ptr<IdToken> identifier(const bool&);
-  // <expression> and descendants will return unary or binary operator nodes
-  std::unique_ptr<ast::Node> expression(int&);
-  std::unique_ptr<ast::Node> expressionPrime(const TypeMark&, int&);
-  std::unique_ptr<ast::Node> arithOp(int&);
-  std::unique_ptr<ast::Node> arithOpPrime(const TypeMark&, int&);
-  std::unique_ptr<ast::Node> relation(int&);
-  std::unique_ptr<ast::Node> relationPrime(const TypeMark&, int&);
-  std::unique_ptr<ast::Node> term(int&);
-  std::unique_ptr<ast::Node> termPrime(const TypeMark&, int&);
-  // Return one of: binary/unary op node, literal, or variable reference
-  std::unique_ptr<ast::Node> factor(int&);
-  std::unique_ptr<ast::VariableReference> name(int&);
-  std::unique_ptr<ast::ArgumentList> argumentList(const int&, std::shared_ptr<IdToken>);
-  // Either a float or an int
-  std::unique_ptr<ast::Node> number();
+  std::unique_ptr<ast::Node> expression();
+  std::unique_ptr<ast::Node> expressionPrime(std::unique_ptr<ast::Node>);
+  std::unique_ptr<ast::Node> arithOp();
+  std::unique_ptr<ast::Node> arithOpPrime(std::unique_ptr<ast::Node>);
+  std::unique_ptr<ast::Node> relation();
+  std::unique_ptr<ast::Node> relationPrime(std::unique_ptr<ast::Node>);
+  std::unique_ptr<ast::Node> term();
+  std::unique_ptr<ast::Node> termPrime(std::unique_ptr<ast::Node>);
+  std::unique_ptr<ast::Node> factor();
+  std::unique_ptr<ast::VariableReference> name();
+  std::unique_ptr<ast::ArgumentList> argumentList(std::shared_ptr<IdToken>);
+  std::unique_ptr<ast::Literal<float>> number();
   std::unique_ptr<ast::Literal<std::string>> string();
 };
 
