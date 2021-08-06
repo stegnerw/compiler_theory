@@ -165,7 +165,7 @@ namespace ast {
     std::unique_ptr<ArgumentList> arg_list;
   };
 
-  // id, number (array size)
+  // also Parameter
   class VariableDeclaration : public Node {
    public:
     VariableDeclaration(std::shared_ptr<IdToken> id_tok,
@@ -261,9 +261,9 @@ namespace ast {
     std::unique_ptr<ProcedureBody> proc_body;
   };
 
-  class ProgBody : public Node {
+  class ProgramBody : public Node {
    public:
-    ProgBody(std::unique_ptr<Declaration> decl,
+    ProgramBody(std::unique_ptr<Declaration> decl,
         std::unique_ptr<Statement> stmt) :
       Node("Program Body"),
       decl(std::move(decl)),
@@ -274,17 +274,17 @@ namespace ast {
     std::unique_ptr<Statement> stmt;
   };
 
-  class Prog : public Node {
+  class Program : public Node {
    public:
-    Prog(std::shared_ptr<IdToken> id_tok,
-        std::unique_ptr<ProgBody> prog_body) :
+    Program(std::shared_ptr<IdToken> id_tok,
+        std::unique_ptr<ProgramBody> prog_body) :
       Node("Program"),
       id_tok(id_tok),
       prog_body(std::move(prog_body)) {}
 
    protected:
     std::shared_ptr<IdToken> id_tok;
-    std::unique_ptr<ProgBody> prog_body;
+    std::unique_ptr<ProgramBody> prog_body;
   };
 
 } // namespace ast
