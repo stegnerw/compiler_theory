@@ -2,11 +2,13 @@
 #define PARSER_H
 
 #include <fstream>
+#include <list>
 #include <memory>
 #include <stack>
 #include <string>
 #include <unordered_map>
 
+#include "ast.h"
 #include "environment.h"
 #include "scanner.h"
 #include "token.h"
@@ -16,7 +18,7 @@ class Parser {
 public:
   Parser();
   bool init(const std::string&);
-  bool parse();  // program
+  std::unique_ptr<ast::Program> parse();
 
 private:
   std::shared_ptr<Environment> env;
@@ -26,45 +28,50 @@ private:
   std::stack<std::shared_ptr<IdToken>> function_stack;
   bool panic_mode;
   void scan();
-  bool matchToken(const TokenType&);
-  bool expectToken(const TokenType&);
+  bool match(const TokenType&);
+  bool expect(const TokenType&);
+  bool expectScan(const TokenType&);
   void panic();
-  void push_scope(std::shared_ptr<IdToken>);
-  void pop_scope();
-  void programHeader();
-  void programBody();
-  void declarations(bool);
-  void statements();
-  void declaration(bool);
-  void procedureDeclaration(const bool&);
-  void procedureHeader(const bool&);
-  void parameterList();
-  std::shared_ptr<IdToken> parameter();
-  void procedureBody();
-  std::shared_ptr<IdToken> variableDeclaration(const bool&);
+  void pushScope(std::shared_ptr<IdToken>);
+  void popScope();
+  std::shared_ptr<IdToken> programHeader();
+  std::unique_ptr<ast::ProgramBody> programBody();
+  std::list<std::unique_ptr<ast::Node>> declarations(bool);
+  std::list<std::unique_ptr<ast::Node>> statements();
+  std::unique_ptr<ast::Node> declaration(bool);
+  std::unique_ptr<ast::ProcedureDeclaration> procedureDeclaration(const bool&);
+  std::unique_ptr<ast::ProcedureHeader> procedureHeader(const bool&);
+  std::unique_ptr<ast::ParameterList> parameterList();
+  std::unique_ptr<ast::VariableDeclaration> parameter();
+  std::unique_ptr<ast::ProcedureBody> procedureBody();
+  std::unique_ptr<ast::VariableDeclaration> variableDeclaration(const bool&);
   TypeMark typeMark();
-  int bound();
-  void statement();
-  TypeMark procedureCall();
-  void assignmentStatement();
-  TypeMark destination(int&);
-  void ifStatement();
-  void loopStatement();
-  void returnStatement();
+  std::unique_ptr<ast::Literal<int>> bound();
+  std::unique_ptr<ast::Node> statement();
+  std::unique_ptr<ast::ProcedureCall> procedureCall();
+  std::unique_ptr<ast::AssignmentStatement> assignmentStatement();
+  std::unique_ptr<ast::VariableReference> destination(int&);
+  std::unique_ptr<ast::IfStatement> ifStatement();
+  std::unique_ptr<ast::LoopStatement> loopStatement();
+  std::unique_ptr<ast::ReturnStatement> returnStatement();
+  // TODO: Make this a ast::Node type? Would be more consistent
   std::shared_ptr<IdToken> identifier(const bool&);
-  TypeMark expression(int&);
-  TypeMark expressionPrime(const TypeMark&, int&);
-  TypeMark arithOp(int&);
-  TypeMark arithOpPrime(const TypeMark&, int&);
-  TypeMark relation(int&);
-  TypeMark relationPrime(const TypeMark&, int&);
-  TypeMark term(int&);
-  TypeMark termPrime(const TypeMark&, int&);
-  TypeMark factor(int&);
-  TypeMark name(int&);
-  void argumentList(const int&, std::shared_ptr<IdToken>);
-  std::shared_ptr<Token> number();
-  std::shared_ptr<LiteralToken<std::string>> string();
+  // <expression> and descendants will return unary or binary operator nodes
+  std::unique_ptr<ast::Node> expression(int&);
+  std::unique_ptr<ast::Node> expressionPrime(const TypeMark&, int&);
+  std::unique_ptr<ast::Node> arithOp(int&);
+  std::unique_ptr<ast::Node> arithOpPrime(const TypeMark&, int&);
+  std::unique_ptr<ast::Node> relation(int&);
+  std::unique_ptr<ast::Node> relationPrime(const TypeMark&, int&);
+  std::unique_ptr<ast::Node> term(int&);
+  std::unique_ptr<ast::Node> termPrime(const TypeMark&, int&);
+  // Return one of: binary/unary op node, literal, or variable reference
+  std::unique_ptr<ast::Node> factor(int&);
+  std::unique_ptr<ast::VariableReference> name(int&);
+  std::unique_ptr<ast::ArgumentList> argumentList(const int&, std::shared_ptr<IdToken>);
+  // Either a float or an int
+  std::unique_ptr<ast::Node> number();
+  std::unique_ptr<ast::Literal<std::string>> string();
 };
 
 #endif // PARSER_H

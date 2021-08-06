@@ -1,10 +1,10 @@
 #ifndef AST_H
 #define AST_H
 
+#include <list>
 #include <memory>
 #include <string>
 
-#include "environment.h"
 #include "token.h"
 
 namespace ast {
@@ -23,8 +23,6 @@ namespace ast {
    protected:
     std::string name;
     TypeMark tm;
-    // TODO: Do I need this? I think not.
-    //static std::shared_ptr<Environment> env;
   };
 
   template <class T>
@@ -104,29 +102,33 @@ namespace ast {
 
   class IfStatement : public Node {
    public:
-    IfStatement(std::unique_ptr<Node> if_cond, std::unique_ptr<Node> then_stmt,
-        std::unique_ptr<Node> else_stmt) :
+    IfStatement(std::unique_ptr<Node> if_cond,
+        std::list<std::unique_ptr<Node>> then_stmt_list,
+        std::list<std::unique_ptr<Node>> else_stmt_list) :
       Node("If Statement"),
       if_cond(std::move(if_cond)),
-      then_stmt(std::move(then_stmt)),
-      else_stmt(std::move(else_stmt)) {}
+      then_stmt_list(std::move(then_stmt_list)),
+      else_stmt_list(std::move(else_stmt_list)) {}
 
    protected:
-    std::unique_ptr<Node> if_cond, then_stmt, else_stmt;
+    std::unique_ptr<Node> if_cond;
+    std::list<std::unique_ptr<Node>> then_stmt_list, else_stmt_list;
   };
 
   class LoopStatement : public Node {
    public:
     LoopStatement(std::unique_ptr<AssignmentStatement> assign,
-        std::unique_ptr<Node> expr, std::unique_ptr<Node> stmt) :
+        std::unique_ptr<Node> expr,
+        std::list<std::unique_ptr<Node>> stmt_list) :
       Node("Loop Statement"),
       assign(std::move(assign)),
       expr(std::move(expr)),
-      stmt(std::move(stmt)) {}
+      stmt_list(std::move(stmt_list)) {}
 
    protected:
     std::unique_ptr<AssignmentStatement> assign;
-    std::unique_ptr<Node> expr, stmt;
+    std::unique_ptr<Node> expr;
+    std::list<std::unique_ptr<Node>> stmt_list;
   };
 
   class ReturnStatement : public Node {
@@ -179,49 +181,17 @@ namespace ast {
     std::unique_ptr<Literal<int>> bound;
   };
 
-  class Statement : public Node {
-   public:
-    Statement(std::unique_ptr<Node> stmt) :
-      Node("Statement"),
-      stmt(std::move(stmt)),
-      next_stmt(nullptr) {}
-    void setNext(std::unique_ptr<Statement> next) {
-      next_stmt = std::move(next);
-    }
-
-   protected:
-    std::unique_ptr<Node> stmt;
-    std::unique_ptr<Statement> next_stmt;
-  };
-
-  class Declaration : public Node {
-   public:
-    Declaration(bool global, std::unique_ptr<Node> decl) :
-      Node("Declaration"),
-      global(global),
-      decl(std::move(decl)),
-      next_decl(nullptr) {}
-    void setNext(std::unique_ptr<Declaration> next) {
-      next_decl = std::move(next);
-    }
-
-   protected:
-    bool global;
-    std::unique_ptr<Node> decl;
-    std::unique_ptr<Declaration> next_decl;
-  };
-
   class ProcedureBody : public Node {
    public:
-    ProcedureBody(std::unique_ptr<Declaration> decl,
-        std::unique_ptr<Statement> stmt) :
+    ProcedureBody(std::list<std::unique_ptr<Node>> decl_list,
+        std::list<std::unique_ptr<Node>> stmt_list) :
       Node("Procedure Body"),
-      decl(std::move(decl)),
-      stmt(std::move(stmt)) {}
+      decl_list(std::move(decl_list)),
+      stmt_list(std::move(stmt_list)) {}
 
    protected:
-    std::unique_ptr<Declaration> decl;
-    std::unique_ptr<Statement> stmt;
+    std::list<std::unique_ptr<Node>> decl_list;
+    std::list<std::unique_ptr<Node>> stmt_list;
   };
 
   class ParameterList : public Node {
@@ -263,15 +233,15 @@ namespace ast {
 
   class ProgramBody : public Node {
    public:
-    ProgramBody(std::unique_ptr<Declaration> decl,
-        std::unique_ptr<Statement> stmt) :
+    ProgramBody(std::list<std::unique_ptr<Node>> decl_list,
+        std::list<std::unique_ptr<Node>> stmt_list) :
       Node("Program Body"),
-      decl(std::move(decl)),
-      stmt(std::move(stmt)) {}
+      decl_list(std::move(decl_list)),
+      stmt_list(std::move(stmt_list)) {}
 
    protected:
-    std::unique_ptr<Declaration> decl;
-    std::unique_ptr<Statement> stmt;
+    std::list<std::unique_ptr<Node>> decl_list;
+    std::list<std::unique_ptr<Node>> stmt_list;
   };
 
   class Program : public Node {
