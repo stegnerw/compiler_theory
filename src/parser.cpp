@@ -406,7 +406,7 @@ std::unique_ptr<ast::ProcedureCall> Parser::procedureCall() {
   }
   std::unique_ptr<ast::ArgumentList> arg_list = nullptr;
   if (!match(TOK_RPAREN)) {
-    arg_list = argumentList(id_tok);
+    arg_list = argumentList();
   }
   if (!expectScan(TOK_RPAREN)) {
     LOG(WARN) << "Skipping procedure call";
@@ -562,8 +562,13 @@ std::unique_ptr<ast::Node> Parser::expression() {
     LOG(DEBUG) << "Bitwise not";
     scan();
   }
-  //op_tok = std::make_shared<Token>(TOK_OP_EXPR, "not");
+
+  // Parse LHS arithOp
   std::unique_ptr<ast::Node> lhs = arithOp();
+  if (lhs == nullptr) {
+    LOG(ERROR) << "Failed to parse lhs arith op";
+    return nullptr;
+  }
 
   // Add not operator if applicable
   if (bitwise_not) {
@@ -584,63 +589,71 @@ Parser::expressionPrime(std::unique_ptr<ast::Node> lhs) {
   if (!match(TOK_OP_EXPR)) {
     LOG(DEBUG) << "epsilon";
     return lhs;
-  } else {
-    std::shared_ptr<Token> op_tok = tok;
-    scan();
-    int arith_size = 0;
-    TypeMark tm_arith = arithOp(arith_size);
-    type_checker.checkCompatible(op_tok, tm, tm_arith);
-    type_checker.checkArraySize(op_tok, size, arith_size);
-    size = std::max(size, arith_size);
-    expressionPrime(tm_arith, size);
   }
-  return tm;
+  std::shared_ptr<Token> op_tok = tok;
+  scan();
+
+  // Parse RHS arithOp
+  std::unique_ptr<ast::Node> rhs = arithOp();
+  if (rhs == nullptr) {
+    LOG(ERROR) << "Failed to parse rhs arith op";
+    return nullptr;
+  }
+  return expressionPrime(std::make_unique<ast::BinaryOp>(std::move(lhs),
+        std::move(rhs), op_tok));
 }
 
 //  <arith_op> ::=
 //    <relation> <arith_op_prime>
 std::unique_ptr<ast::Node> Parser::arithOp() {
   LOG(DEBUG) << "<arith_op>";
-  TypeMark tm_relat = relation(size);
 
-  // tm_relat and tm_arith are checked in arithOpPrime
-  return arithOpPrime(tm_relat, size);
+  // Parse LHS relation
+  std::unique_ptr<ast::Node> lhs = relation();
+  if (lhs == nullptr) {
+    LOG(ERROR) << "Failed to parse lhs relation";
+    return nullptr;
+  }
+  return arithOpPrime(std::move(lhs));
 }
 
 //  <arith_op_prime> ::=
 //    `+' <relation> <arith_op_prime>
 //  | `-' <relation> <arith_op_prime>
 //  | epsilon
-std::unique_ptr<ast::Node> Parser::arithOpPrime(std::unique_ptr<Node> lhs) {
+std::unique_ptr<ast::Node>
+Parser::arithOpPrime(std::unique_ptr<ast::Node> lhs) {
   LOG(DEBUG) << "<arith_op_prime>";
   if (!match(TOK_OP_ARITH)) {
     LOG(DEBUG) << "epsilon";
-    return tm;
+    return lhs;
   }
   std::shared_ptr<Token> op_tok = tok;
   scan();
-  int relat_size = 0;
-  TypeMark tm_relat = relation(relat_size);
-  type_checker.checkCompatible(op_tok, tm, tm_relat);
-  type_checker.checkArraySize(op_tok, size, relat_size);
 
-  // If either side is `float', cast to `float'
-  TypeMark tm_result;
-  if ((tm == TYPE_FLT) || (tm_relat == TYPE_FLT)) {
-    tm_result = TYPE_FLT;
-  } else {
-    tm_result = TYPE_INT;
+  // Parse RHS relation
+  std::unique_ptr<ast::Node> rhs = relation();
+  if (rhs == nullptr) {
+    LOG(ERROR) << "Failed to parse rhs relation";
+    return nullptr;
   }
-  size = std::max(size, relat_size);
-  return arithOpPrime(tm_result, size);
+
+  return arithOpPrime(std::make_unique<ast::BinaryOp>(std::move(lhs),
+        std::move(rhs), op_tok));
 }
 
 //  <relation> ::=
 //    <term> <relation_prime>
 std::unique_ptr<ast::Node> Parser::relation() {
   LOG(DEBUG) << "<relation>";
-  TypeMark tm_term = term(size);
-  return relationPrime(tm_term, size);
+
+  // Parse lhs term
+  std::unique_ptr<ast::Node> lhs = term();
+  if (lhs == nullptr) {
+    LOG(ERROR) << "Failed to parse lhs term";
+    return nullptr;
+  }
+  return relationPrime(std::move(lhs));
 }
 
 //  <relation_prime> ::=
@@ -651,57 +664,61 @@ std::unique_ptr<ast::Node> Parser::relation() {
 //  | `==' <term> <relation_prime>
 //  | `!=' <term> <relation_prime>
 //  | epsilon
-std::unique_ptr<ast::Node> Parser::relationPrime(std::unique_ptr<Node> lhs) {
+std::unique_ptr<ast::Node>
+Parser::relationPrime(std::unique_ptr<ast::Node> lhs) {
   LOG(DEBUG) << "<relation_prime>";
   if (!match(TOK_OP_RELAT)) {
     LOG(DEBUG) << "epsilon";
-    return tm;
+    return lhs;
   }
   std::shared_ptr<Token> op_tok = tok;
   scan();
-  int term_size = 0;
-  TypeMark tm_term = term(term_size);
-  type_checker.checkCompatible(op_tok, tm, tm_term);
-  type_checker.checkArraySize(op_tok, size, term_size);
-  size = std::max(size, term_size);
-  relationPrime(tm_term, size);
-  return TYPE_BOOL;
+
+  // Parse RHS term
+  std::unique_ptr<ast::Node> rhs = term();
+  if (rhs == nullptr) {
+    LOG(ERROR) << "Failed to parse rhs term";
+    return nullptr;
+  }
+  return relationPrime(std::make_unique<ast::BinaryOp>(std::move(lhs),
+        std::move(rhs), op_tok));
 }
 
 //  <term> ::=
 //    <factor> <term_prime>
 std::unique_ptr<ast::Node> Parser::term() {
   LOG(DEBUG) << "<term>";
-  TypeMark tm_fact = factor(size);
-  return termPrime(tm_fact, size);
+
+  // Parse lhs factor
+  std::unique_ptr<ast::Node> lhs = factor();
+  if (lhs == nullptr) {
+    LOG(DEBUG) << "Failed to parse lhs factor";
+    return nullptr;
+  }
+  return termPrime(std::move(lhs));
 }
 
 //  <term_prime> ::=
 //    `*' <factor> <term_prime>
 //  | `/' <factor> <term_prime>
 //  | epsilon
-std::unique_ptr<ast::Node> Parser::termPrime(std::unique_ptr<Node> lhs) {
+std::unique_ptr<ast::Node> Parser::termPrime(std::unique_ptr<ast::Node> lhs) {
   LOG(DEBUG) << "<term_prime>";
   if (!match(TOK_OP_TERM)) {
     LOG(DEBUG) << "epsilon";
-    return tm;
+    return lhs;
   }
   std::shared_ptr<Token> op_tok = tok;
   scan();
-  int fact_size = 0;
-  TypeMark tm_fact = factor(fact_size);
-  type_checker.checkCompatible(op_tok, tm, tm_fact);
-  type_checker.checkArraySize(op_tok, size, fact_size);
 
-  // If either side is `float', cast to `float'
-  TypeMark tm_result;
-  if ((tm == TYPE_FLT) || (tm_fact == TYPE_FLT)) {
-    tm_result = TYPE_FLT;
-  } else {
-    tm_result = TYPE_INT;
+  // Parse RHS factor
+  std::unique_ptr<ast::Node> rhs = factor();
+  if (rhs == nullptr) {
+    LOG(DEBUG) << "Failed to parse rhs factor";
+    return nullptr;
   }
-  size = std::max(size, fact_size);
-  return termPrime(tm_result, size);
+  return termPrime(std::make_unique<ast::BinaryOp>(std::move(lhs),
+        std::move(rhs), op_tok));
 }
 
 //  <factor> ::=
@@ -714,140 +731,136 @@ std::unique_ptr<ast::Node> Parser::termPrime(std::unique_ptr<Node> lhs) {
 //  | `false'
 std::unique_ptr<ast::Node> Parser::factor() {
   LOG(DEBUG) << "<factor>";
-  TypeMark tm = TYPE_NONE;
 
-  // Negative sign can only happen before <number> and <name>
-  if (match(TOK_OP_ARITH) && (tok->getVal() == "-")) {
-    scan();
-    if (match(TOK_IDENT)) {
-      std::shared_ptr<IdToken> id_tok = std::dynamic_pointer_cast<IdToken>(
-          env->lookup(tok->getVal(), false));
-      if (!id_tok) {
-        LOG(ERROR) << "Identifier not declared in this scope: "
-            << tok->getStr();
-      } else if (!id_tok->getProcedure()) {
-        tm = name(size);
-      } else {
-        LOG(ERROR) << "Expected variable; got: " << tok->getStr();
-      }
-    } else if (match(TOK_NUM)) {
-      std::shared_ptr<Token> num_tok = number();
-      tm = num_tok->getTypeMark();
-      size = 0;  // <number> literals are scalar
-    } else {
-      LOG(ERROR) << "Minus sign must be followed by <name> or <number>.";
-      LOG(ERROR) << "Got: " << tok->getStr();
-    }
+  //// Negative sign can only happen before <number> and <name>
+  //if (match(TOK_OP_ARITH) && (tok->getVal() == "-")) {
+    //scan();
+    //if (match(TOK_IDENT)) {
+      //std::shared_ptr<IdToken> id_tok = std::dynamic_pointer_cast<IdToken>(
+          //env->lookup(tok->getVal(), false));
+      //if (!id_tok) {
+        //LOG(ERROR) << "Identifier not declared in this scope: "
+            //<< tok->getStr();
+      //} else if (!id_tok->getProcedure()) {
+        //tm = name(size);
+      //} else {
+        //LOG(ERROR) << "Expected variable; got: " << tok->getStr();
+      //}
+    //} else if (match(TOK_NUM)) {
+      //std::shared_ptr<Token> num_tok = number();
+      //tm = num_tok->getTypeMark();
+      //size = 0;  // <number> literals are scalar
+    //} else {
+      //LOG(ERROR) << "Minus sign must be followed by <name> or <number>.";
+      //LOG(ERROR) << "Got: " << tok->getStr();
+    //}
 
-  // `('<expression>`)'
-  } else if (match(TOK_LPAREN)) {
-    scan();
-    tm = expression(size);
-    expectScan(TOK_RPAREN);
+  //// `('<expression>`)'
+  //} else if (match(TOK_LPAREN)) {
+    //scan();
+    //tm = expression(size);
+    //expectScan(TOK_RPAREN);
 
-  // <procedure_call> or <name>
-  } else if (match(TOK_IDENT)) {
-    std::shared_ptr<IdToken> id_tok = std::dynamic_pointer_cast<IdToken>(
-        env->lookup(tok->getVal(), false));
-    if (!id_tok) {
-      LOG(ERROR) << "Identifier not declared in this scope: "
-          << tok->getStr();
-    } else if (id_tok->getProcedure()) {
-      tm = procedureCall();
-      size = 0;  // Procedure calls return scalars
-    } else {
-      tm = name(size);
-    }
+  //// <procedure_call> or <name>
+  //} else if (match(TOK_IDENT)) {
+    //std::shared_ptr<IdToken> id_tok = std::dynamic_pointer_cast<IdToken>(
+        //env->lookup(tok->getVal(), false));
+    //if (!id_tok) {
+      //LOG(ERROR) << "Identifier not declared in this scope: "
+          //<< tok->getStr();
+    //} else if (id_tok->getProcedure()) {
+      //tm = procedureCall();
+      //size = 0;  // Procedure calls return scalars
+    //} else {
+      //tm = name(size);
+    //}
 
-  // <number>
-  } else if (match(TOK_NUM)) {
-    std::shared_ptr<Token> num_tok = number();
-    tm = num_tok->getTypeMark();
-    size = 0;  // <number> literals are scalars
+  //// <number>
+  //} else if (match(TOK_NUM)) {
+    //std::shared_ptr<Token> num_tok = number();
+    //tm = num_tok->getTypeMark();
+    //size = 0;  // <number> literals are scalars
 
-  // <string>
-  } else if (match(TOK_STR)) {
-    std::shared_ptr<LiteralToken<std::string>> str_tok = string();
-    tm = str_tok->getTypeMark();
-    size = 0;  // <string> literals are scalars
+  //// <string>
+  //} else if (match(TOK_STR)) {
+    //std::shared_ptr<LiteralToken<std::string>> str_tok = string();
+    //tm = str_tok->getTypeMark();
+    //size = 0;  // <string> literals are scalars
 
-  // `true'
-  } else if (match(TOK_RW_TRUE)) {
-    tm = TYPE_BOOL;
-    size = 0;  // `true' literals are scalars
-    scan();
+  //// `true'
+  //} else if (match(TOK_RW_TRUE)) {
+    //tm = TYPE_BOOL;
+    //size = 0;  // `true' literals are scalars
+    //scan();
 
-  // `false'
-  } else if (match(TOK_RW_FALSE)) {
-    tm = TYPE_BOOL;
-    size = 0;  // `false' literals are scalars
-    scan();
+  //// `false'
+  //} else if (match(TOK_RW_FALSE)) {
+    //tm = TYPE_BOOL;
+    //size = 0;  // `false' literals are scalars
+    //scan();
 
-  // Oof
-  } else {
-    LOG(ERROR) << "Unexpected token: " << tok->getStr();
-    tm = TYPE_NONE;
-    size = 0;
-    panic();
-  }
-  return tm;
-}
+  //// Oof
+  //} else {
+    //LOG(ERROR) << "Unexpected token: " << tok->getStr();
+    //tm = TYPE_NONE;
+    //size = 0;
+    //panic();
+  //}
+  //return tm;
+//}
 
-//  <name> ::=
-//    <identifier> [`['<expression>`]']
-std::unique_ptr<ast::VariableReference> Parser::name(int& size) {
-  LOG(DEBUG) << "<name>";
-  std::shared_ptr<IdToken> id_tok = identifier(true);
-  if (id_tok->getProcedure()) {
-    LOG(ERROR) << "Expected variable; got procedure " << id_tok->getVal();
-  }
-  TypeMark tm = id_tok->getTypeMark();
-  size = id_tok->getNumElements();
-  if (match(TOK_LBRACK)) {
-    LOG(DEBUG) << "Indexing array";
-    size = 0;  // If indexing, it's a single element not an array
-    if (id_tok->getProcedure() || (id_tok->getNumElements() < 1)) {
-      LOG(ERROR) << "Attempt to index non-array symbol " << id_tok->getVal();
-    }
-    scan();
-    int idx_size = 0;
-    TypeMark tm_idx = expression(idx_size);
-    type_checker.checkArrayIndex(tm_idx);
-    if (idx_size > 0) {
-      LOG(ERROR) << "Invalid index; expected scalar, got array";
-    }
-    expectScan(TOK_RBRACK);
-  }
-  return tm;
+////  <name> ::=
+////    <identifier> [`['<expression>`]']
+//std::unique_ptr<ast::VariableReference> Parser::name() {
+  //LOG(DEBUG) << "<name>";
+  //std::shared_ptr<IdToken> id_tok = identifier(true);
+  //if (id_tok->getProcedure()) {
+    //LOG(ERROR) << "Expected variable; got procedure " << id_tok->getVal();
+  //}
+  //TypeMark tm = id_tok->getTypeMark();
+  //size = id_tok->getNumElements();
+  //if (match(TOK_LBRACK)) {
+    //LOG(DEBUG) << "Indexing array";
+    //size = 0;  // If indexing, it's a single element not an array
+    //if (id_tok->getProcedure() || (id_tok->getNumElements() < 1)) {
+      //LOG(ERROR) << "Attempt to index non-array symbol " << id_tok->getVal();
+    //}
+    //scan();
+    //int idx_size = 0;
+    //TypeMark tm_idx = expression(idx_size);
+    //type_checker.checkArrayIndex(tm_idx);
+    //if (idx_size > 0) {
+      //LOG(ERROR) << "Invalid index; expected scalar, got array";
+    //}
+    //expectScan(TOK_RBRACK);
+  //}
+  //return tm;
+  return nullptr;
 }
 
 //  <argument_list> ::=
 //    <expression> `,' <argument_list>
 //  | <expression>
 std::unique_ptr<ast::ArgumentList>
-Parser::argumentList(std::shared_ptr<IdToken> fun_tok) {
+Parser::argumentList() {
   LOG(DEBUG) << "<argument_list>";
-  int expr_size = 0;
-  TypeMark tm_arg = expression(expr_size);
-  std::shared_ptr<IdToken> param = fun_tok->getParam(idx);
-  if (!param) {
-    LOG(ERROR) << "Unexpected parameter with type "
-        << Token::getTypeMarkName(tm_arg);
-  } else if (!type_checker.checkCompatible(param->getTypeMark(), tm_arg)) {
-    LOG(ERROR) << "Expected parameter with type "
-        << Token::getTypeMarkName(param->getTypeMark()) << "; got "
-        << Token::getTypeMarkName(tm_arg);
-  } else if (expr_size != param->getNumElements()) {
-    LOG(ERROR) << "Size of argument (" << expr_size
-        << ") != size of parameter (" << param->getNumElements() << ")";
+
+  // Parse argument expression
+  std::unique_ptr<ast::Node> expr = expression();
+  if (expr == nullptr) {
+    LOG(ERROR) << "Failed to parse expression";
+    return nullptr;
   }
+
+  // Get next argument
   if (match(TOK_COMMA)) {
     scan();
-    argumentList(idx + 1, fun_tok);
-  } else if (idx < fun_tok->getNumElements() - 1) {
-    LOG(ERROR) << "Not enough parameters for procedure call "
-        << fun_tok->getVal();
+    return std::make_unique<ast::ArgumentList>(std::move(expr),
+        argumentList());
   }
+
+  // Last argument was parsed
+  return std::make_unique<ast::ArgumentList>(std::move(expr), nullptr);
 }
 
 //  <number> ::=

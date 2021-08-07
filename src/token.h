@@ -153,6 +153,13 @@ public:
     }
     if (procedure) {
       ss << ", PROCEDURE";
+      if (num_elements > 0) {
+        ss << ", PARAMETERS: (\n";
+        for (auto i : param_list) {
+          ss << "\t" << i->getStr() << ",\n";
+        }
+        ss << ")";
+      }
     }
     ss << " }";
     return ss.str();
@@ -174,9 +181,41 @@ public:
   void setProcedure(bool b) { procedure = b; }
   bool getProcedure() { return procedure; }
 
+  // param_list adder/getter
+  void addParam(std::shared_ptr<IdToken> param_token) {
+    if (!procedure) {
+      LOG(ERROR) << "Cannot add parameters to a variable";
+      return;
+    }
+    if (!param_token) {
+      LOG(ERROR) << "Null pointer received as parameter; parameter skipped";
+      return;
+    }
+    param_list.push_back(param_token);
+    num_elements++;
+  }
+  std::shared_ptr<IdToken> getParam(int idx) {
+    if (!procedure) {
+      LOG(ERROR) << "Cannot get parameters from a variable";
+      return nullptr;
+    }
+    if (idx >= num_elements) {
+      LOG(ERROR) << "Procedure " << val << " only has " << num_elements
+          << " parameters";
+      LOG(ERROR) << "Cannot access parameter with index " << idx;
+      return nullptr;
+    }
+    if (idx < 0) {
+      LOG(ERROR) << "Cannot access negative index parameter: " << idx;
+      return nullptr;
+    }
+    return param_list[idx];
+  }
+
 private:
   int num_elements;
   bool procedure;
+  std::vector<std::shared_ptr<IdToken>> param_list;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

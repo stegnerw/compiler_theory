@@ -65,7 +65,7 @@ private:
   std::unique_ptr<ast::Node> termPrime(std::unique_ptr<ast::Node>);
   std::unique_ptr<ast::Node> factor();
   std::unique_ptr<ast::VariableReference> name();
-  std::unique_ptr<ast::ArgumentList> argumentList(std::shared_ptr<IdToken>);
+  std::unique_ptr<ast::ArgumentList> argumentList();
   std::unique_ptr<ast::Literal<float>> number();
   std::unique_ptr<ast::Literal<std::string>> string();
 };
