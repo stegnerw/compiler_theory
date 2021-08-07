@@ -8,9 +8,7 @@
 #include "environment.h"
 #include "token.h"
 
-class TypeChecker {
-public:
-  TypeChecker();
+namespace type_checker {
   bool checkCompatible(std::shared_ptr<Token>, const TypeMark&);
   bool checkCompatible(std::shared_ptr<Token>, const TypeMark&,
       const TypeMark&);
@@ -18,8 +16,6 @@ public:
   bool checkArrayIndex(const TypeMark&);
   bool checkArraySize(std::shared_ptr<Token>, const int&);
   bool checkArraySize(std::shared_ptr<Token>, const int&, const int&);
-
-private:
 };
 
 #endif // TYPE_CHECKER_H

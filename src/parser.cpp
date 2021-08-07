@@ -13,11 +13,10 @@
 #include "scanner.h"
 #include "token.h"
 
-Parser::Parser() : env(new Environment()), scanner(env), panic_mode(false) {}
+Parser::Parser() : env(new Environment()), scanner(env) {}
 
 bool Parser::init(const std::string& src_file) {
   bool init_success = true;
-  panic_mode = false;
   if (!scanner.init(src_file)) {
     init_success = false;
     LOG(ERROR) << "Failed to initialize parser";
@@ -102,7 +101,6 @@ bool Parser::expectScan(const TokenType& t) {
 void Parser::panic() {
 
   // Flag that panic mode happened so the rest of the parser can respond
-  panic_mode = true;
   LOG(ERROR) << "Start panic mode";
   LOG(ERROR) << "Scanning for `;' or `EOF'";
 
@@ -176,7 +174,6 @@ std::list<std::unique_ptr<ast::Node>> Parser::statements() {
   while(match(TOK_IDENT) || match(TOK_RW_IF) || match(TOK_RW_FOR)
       || match(TOK_RW_RET)) {  // TODO: !match(FOLLOW(<statement>) instead??
       // FOLLOW(<statement>) is always TOK_RW_END
-    panic_mode = false;  // Reset panic mode
     std::unique_ptr<ast::Node> stmt = statement();
     if (stmt == nullptr || !expectScan(TOK_SEMICOL)) {
       panic();  // TODO: Again, something smarter?
@@ -336,7 +333,7 @@ Parser::variableDeclaration(const bool& is_global) {
     expectScan(TOK_RBRACK);
   }
   LOG(DEBUG) << "Declared variable " << id_tok->getStr();
-  return std::make_unique<ast::VariableDeclaration>(tm, id_tok,
+  return std::make_unique<ast::VariableDeclaration>(tm, is_global, id_tok,
       std::move(bound_node));
 }
 
@@ -359,7 +356,6 @@ TypeMark Parser::typeMark() {
   }
   else {
     LOG(ERROR) << "Expected type mark, got: " << tok->getVal();
-    panic();
     return tm;
   }
   scan();
@@ -535,7 +531,8 @@ std::unique_ptr<ast::ReturnStatement> Parser::returnStatement() {
     LOG(ERROR) << "Skipping return statement";
     return nullptr;
   }
-  return std::make_unique<ast::ReturnStatement>(expression());
+  return std::make_unique<ast::ReturnStatement>(
+      function_stack.top()->getTypeMark(), expression());
 }
 
 //  <identifier> ::=

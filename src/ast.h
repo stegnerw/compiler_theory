@@ -16,10 +16,16 @@ namespace ast {
     Node(std::string name) : name(name), tm(TYPE_NONE), size(0) {}
     Node(std::string name, TypeMark tm) : name(name), tm(tm), size(0) {}
     virtual ~Node() {}
-    //virtual bool typeCheck() = 0;
+    virtual void typeCheck() = 0;
+
     virtual std::string getName() { return name; }
+    void setName(const std::string& n) { name = n; }
+
     TypeMark getTypeMark() { return tm; }
+    void setTypeMark(const TypeMark& t) { tm = t; }
+
     int getSize() { return size; }
+    void setSize(const int& s) { size = s; }
 
    protected:
     std::string name;
@@ -34,9 +40,8 @@ namespace ast {
    public:
     Literal(const TypeMark& tm, const T& val) :
       Node("Literal", tm),
-      val(val) {}
-
-    bool typeCheck() { return tm != TYPE_NONE; }
+      val(val) { typeCheck(); }
+    void typeCheck() { size = 0; }
     T getVal() { return val; }
 
    protected:
@@ -51,7 +56,8 @@ namespace ast {
       Node("Binary Op"),
       lhs(std::move(lhs)),
       rhs(std::move(rhs)),
-      op_tok(op_tok) {}
+      op_tok(op_tok) { typeCheck(); }
+    void typeCheck();
 
    protected:
     std::unique_ptr<Node> lhs;
@@ -59,13 +65,14 @@ namespace ast {
     std::shared_ptr<Token> op_tok;
   };
 
-  // Not and negative ops
+  // `not' and `-' ops
   class UnaryOp : public Node {
    public:
     UnaryOp(std::unique_ptr<Node> lhs, std::shared_ptr<Token> op_tok) :
       Node("Unary Op"),
       lhs(std::move(lhs)),
-      op_tok(op_tok) {}
+      op_tok(op_tok) { typeCheck(); }
+    void typeCheck();
 
    protected:
     std::unique_ptr<Node> lhs;
@@ -76,19 +83,16 @@ namespace ast {
    public:
 
     VariableReference(std::shared_ptr<IdToken> id_tok,
-        std::unique_ptr<Node> expr_node) :
-      Node("Variable Reference"),
-      id_tok(id_tok),
-      expr_node(std::move(expr_node)) {}
-
+        std::unique_ptr<Node> expr) :
+      Node("Variable Reference"), id_tok(id_tok),
+      expr(std::move(expr)) { typeCheck(); }
     VariableReference(std::shared_ptr<IdToken> id_tok) :
-      Node("Variable Reference"),
-      id_tok(id_tok),
-      expr_node(nullptr) {}
+      Node("Variable Reference"), id_tok(id_tok), expr(nullptr) { typeCheck(); }
+    void typeCheck();
 
    protected:
     std::shared_ptr<IdToken> id_tok;
-    std::unique_ptr<Node> expr_node;
+    std::unique_ptr<Node> expr;
   };
 
   class AssignmentStatement : public Node {
@@ -97,7 +101,8 @@ namespace ast {
         std::unique_ptr<Node> expr) :
       Node("Assignment Statement"),
       dest(std::move(dest)),
-      expr(std::move(expr)) {}
+      expr(std::move(expr)) { typeCheck(); }
+    void typeCheck();
 
    protected:
     std::unique_ptr<VariableReference> dest;
@@ -112,7 +117,8 @@ namespace ast {
       Node("If Statement"),
       if_cond(std::move(if_cond)),
       then_stmt_list(std::move(then_stmt_list)),
-      else_stmt_list(std::move(else_stmt_list)) {}
+      else_stmt_list(std::move(else_stmt_list)) { typeCheck(); }
+    void typeCheck();
 
    protected:
     std::unique_ptr<Node> if_cond;
@@ -127,7 +133,8 @@ namespace ast {
       Node("Loop Statement"),
       assign(std::move(assign)),
       expr(std::move(expr)),
-      stmt_list(std::move(stmt_list)) {}
+      stmt_list(std::move(stmt_list)) { typeCheck(); }
+    void typeCheck();
 
    protected:
     std::unique_ptr<AssignmentStatement> assign;
@@ -137,9 +144,10 @@ namespace ast {
 
   class ReturnStatement : public Node {
    public:
-    ReturnStatement(std::unique_ptr<Node> expr) :
-      Node("Return Statement"),
-      expr(std::move(expr)) {}
+    ReturnStatement(const TypeMark& tm, std::unique_ptr<Node> expr) :
+      Node("Return Statement", tm),
+      expr(std::move(expr)) { typeCheck(); }
+    void typeCheck();
 
    protected:
     std::unique_ptr<Node> expr;
@@ -151,25 +159,27 @@ namespace ast {
         std::list<std::unique_ptr<Node>> arg_list) :
       Node("Procedure Call"),
       id_tok(id_tok),
-      arg_list(std::move(arg_list)) {}
+      arg_list(std::move(arg_list)) { typeCheck(); }
+    void typeCheck();
 
    protected:
     std::shared_ptr<IdToken> id_tok;
     std::list<std::unique_ptr<Node>> arg_list;
   };
 
-  // also Parameter
   // TODO: Type checking node: check bound size
-  class VariableDeclaration : public Node {
+  class VariableDeclaration : public Node {  // also Parameter
    public:
-    VariableDeclaration(const TypeMark& tm, std::shared_ptr<IdToken> id_tok,
+    VariableDeclaration(const TypeMark& tm, const bool& global,
+        std::shared_ptr<IdToken> id_tok,
         std::unique_ptr<Literal<float>> bound) :
-      Node("Variable Declaration", tm),
-      id_tok(id_tok),
-      bound(std::move(bound)) {}
+      Node("Variable Declaration", tm), global(global), id_tok(id_tok),
+      bound(std::move(bound)) { typeCheck(); }
     std::shared_ptr<IdToken> getIdTok() { return id_tok; }
+    void typeCheck();
 
    protected:
+    bool global;
     std::shared_ptr<IdToken> id_tok;
     std::unique_ptr<Literal<float>> bound;
   };
@@ -180,7 +190,8 @@ namespace ast {
         std::list<std::unique_ptr<Node>> stmt_list) :
       Node("Procedure Body"),
       decl_list(std::move(decl_list)),
-      stmt_list(std::move(stmt_list)) {}
+      stmt_list(std::move(stmt_list)) { typeCheck(); }
+    void typeCheck();
 
    protected:
     std::list<std::unique_ptr<Node>> decl_list;
@@ -195,7 +206,8 @@ namespace ast {
       Node("Procedure Header", tm),
       global(global),
       id_tok(id_tok),
-      param_list(std::move(param_list)) {}
+      param_list(std::move(param_list)) { typeCheck(); }
+    void typeCheck();
 
    protected:
     bool global;
@@ -209,7 +221,8 @@ namespace ast {
         std::unique_ptr<ProcedureBody> proc_body) :
       Node("Procedure Declaration"),
       proc_head(std::move(proc_head)),
-      proc_body(std::move(proc_body)) {}
+      proc_body(std::move(proc_body)) { typeCheck(); }
+    void typeCheck();
 
    protected:
     std::unique_ptr<ProcedureHeader> proc_head;
@@ -222,7 +235,8 @@ namespace ast {
         std::list<std::unique_ptr<Node>> stmt_list) :
       Node("Program Body"),
       decl_list(std::move(decl_list)),
-      stmt_list(std::move(stmt_list)) {}
+      stmt_list(std::move(stmt_list)) { typeCheck(); }
+    void typeCheck();
 
    protected:
     std::list<std::unique_ptr<Node>> decl_list;
@@ -235,7 +249,8 @@ namespace ast {
         std::unique_ptr<ProgramBody> prog_body) :
       Node("Program"),
       id_tok(id_tok),
-      prog_body(std::move(prog_body)) {}
+      prog_body(std::move(prog_body)) { typeCheck(); }
+    void typeCheck();
 
    protected:
     std::shared_ptr<IdToken> id_tok;

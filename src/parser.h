@@ -25,7 +25,6 @@ private:
   Scanner scanner;
   std::shared_ptr<Token> tok;
   std::stack<std::shared_ptr<IdToken>> function_stack;
-  bool panic_mode;
   void scan();
   bool match(const TokenType&);
   bool expect(const TokenType&);

@@ -7,15 +7,13 @@
 #include "log.h"
 #include "token.h"
 
-TypeChecker::TypeChecker() {}
-
 // For 1-operand operations for convenience
-bool TypeChecker::checkCompatible(std::shared_ptr<Token> tok,
+bool type_checker::checkCompatible(std::shared_ptr<Token> tok,
     const TypeMark& op1) {
   return checkCompatible(tok, op1, op1);
 }
 
-bool TypeChecker::checkCompatible(std::shared_ptr<Token> tok,
+bool type_checker::checkCompatible(std::shared_ptr<Token> tok,
     const TypeMark& op1, const TypeMark& op2) {
   LOG(DEBUG) << "Checking types for " << Token::getTypeMarkName(op1) << " "
       << tok->getVal() << " " << Token::getTypeMarkName(op2);
@@ -79,7 +77,7 @@ bool TypeChecker::checkCompatible(std::shared_ptr<Token> tok,
   return compatible;
 }
 
-bool TypeChecker::checkCompatible(const TypeMark& op1, const TypeMark& op2) {
+bool type_checker::checkCompatible(const TypeMark& op1, const TypeMark& op2) {
   bool compatible = false;
   LOG(DEBUG) << "Comparing types " << Token::getTypeMarkName(op1) << " and "
       << Token::getTypeMarkName(op2);
@@ -122,7 +120,7 @@ bool TypeChecker::checkCompatible(const TypeMark& op1, const TypeMark& op2) {
   return compatible;
 }
 
-bool TypeChecker::checkArrayIndex(const TypeMark& op1) {
+bool type_checker::checkArrayIndex(const TypeMark& op1) {
   LOG(DEBUG) << "Checking array index: " << Token::getTypeMarkName(op1);
   bool compatible = op1 == TYPE_INT;
   if (compatible) {
@@ -135,11 +133,11 @@ bool TypeChecker::checkArrayIndex(const TypeMark& op1) {
   return compatible;
 }
 
-bool TypeChecker::checkArraySize(std::shared_ptr<Token> tok, const int& size1) {
+bool type_checker::checkArraySize(std::shared_ptr<Token> tok, const int& size1) {
   return checkArraySize(tok, size1, size1);
 }
 
-bool TypeChecker::checkArraySize(std::shared_ptr<Token> tok, const int& size1,
+bool type_checker::checkArraySize(std::shared_ptr<Token> tok, const int& size1,
     const int& size2) {
   LOG(DEBUG) << "Checking sizes for " << size1 << " " << tok->getVal() << " "
       << size2;
