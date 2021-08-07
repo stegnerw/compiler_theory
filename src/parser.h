@@ -23,7 +23,6 @@ public:
 private:
   std::shared_ptr<Environment> env;
   Scanner scanner;
-  TypeChecker type_checker;
   std::shared_ptr<Token> tok;
   std::stack<std::shared_ptr<IdToken>> function_stack;
   bool panic_mode;
@@ -41,7 +40,8 @@ private:
   std::unique_ptr<ast::Node> declaration(bool);
   std::unique_ptr<ast::ProcedureDeclaration> procedureDeclaration(const bool&);
   std::unique_ptr<ast::ProcedureHeader> procedureHeader(const bool&);
-  std::unique_ptr<ast::ParameterList> parameterList();
+  std::list<std::unique_ptr<ast::VariableDeclaration>>
+    parameterList(std::list<std::unique_ptr<ast::VariableDeclaration>>);
   std::unique_ptr<ast::VariableDeclaration> parameter();
   std::unique_ptr<ast::ProcedureBody> procedureBody();
   std::unique_ptr<ast::VariableDeclaration> variableDeclaration(const bool&);
@@ -65,7 +65,8 @@ private:
   std::unique_ptr<ast::Node> termPrime(std::unique_ptr<ast::Node>);
   std::unique_ptr<ast::Node> factor();
   std::unique_ptr<ast::VariableReference> name();
-  std::unique_ptr<ast::ArgumentList> argumentList();
+  std::list<std::unique_ptr<ast::Node>>
+    argumentList(std::list<std::unique_ptr<ast::Node>>);
   std::unique_ptr<ast::Literal<float>> number();
   std::unique_ptr<ast::Literal<std::string>> string();
 };

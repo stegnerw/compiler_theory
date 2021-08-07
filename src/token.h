@@ -73,9 +73,9 @@ public:
   // Constructors
   Token() : type(TOK_INVALID), val(""),  type_mark(TYPE_NONE) {}
   Token(const TokenType& t, const std::string& v) :
-    type(t),
-    val(v),
-    type_mark(TYPE_NONE) {}
+    type(t), val(v), type_mark(TYPE_NONE) {}
+  Token(const TokenType& t, const std::string& v, const TypeMark& tm) :
+    type(t), val(v), type_mark(tm) {}
 
   // Destructor (to avoid compiler warning)
   virtual ~Token() {}

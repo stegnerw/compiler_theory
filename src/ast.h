@@ -15,7 +15,7 @@ namespace ast {
     Node() = delete;
     Node(std::string name) : name(name), tm(TYPE_NONE), size(0) {}
     Node(std::string name, TypeMark tm) : name(name), tm(tm), size(0) {}
-    virtual ~Node() = 0;
+    virtual ~Node() {}
     //virtual bool typeCheck() = 0;
     virtual std::string getName() { return name; }
     TypeMark getTypeMark() { return tm; }
@@ -27,10 +27,12 @@ namespace ast {
     int size;  // Propagate during type checking
   };
 
+  // Numbers are all float and cast upon code gen
+  // Type mark will reflect int vs float
   template <class T>
   class Literal : public Node {
    public:
-    Literal<T>(const TypeMark& tm, const T& val) :
+    Literal(const TypeMark& tm, const T& val) :
       Node("Literal", tm),
       val(val) {}
 
@@ -60,14 +62,14 @@ namespace ast {
   // Not and negative ops
   class UnaryOp : public Node {
    public:
-    UnaryOp(std::unique_ptr<Node> lhs, std::unique_ptr<Token> op_tok) :
+    UnaryOp(std::unique_ptr<Node> lhs, std::shared_ptr<Token> op_tok) :
       Node("Unary Op"),
       lhs(std::move(lhs)),
-      op_tok(std::move(op_tok)) {}
+      op_tok(op_tok) {}
 
    protected:
     std::unique_ptr<Node> lhs;
-    std::unique_ptr<Token> op_tok;
+    std::shared_ptr<Token> op_tok;
   };
 
   class VariableReference : public Node { // Destination and Name
@@ -143,30 +145,17 @@ namespace ast {
     std::unique_ptr<Node> expr;
   };
 
-  class ArgumentList : public Node {
-   public:
-    ArgumentList(std::shared_ptr<Node> expr,
-        std::unique_ptr<ArgumentList> next_arg) :
-      Node("Argument List"),
-      expr(expr),
-      next_arg(std::move(next_arg)) {}
-
-   protected:
-    std::shared_ptr<Node> expr;
-    std::unique_ptr<ArgumentList> next_arg;
-  };
-
   class ProcedureCall : public Node {
    public:
     ProcedureCall(std::shared_ptr<IdToken> id_tok,
-        std::unique_ptr<ArgumentList> arg_list) :
+        std::list<std::unique_ptr<Node>> arg_list) :
       Node("Procedure Call"),
       id_tok(id_tok),
       arg_list(std::move(arg_list)) {}
 
    protected:
     std::shared_ptr<IdToken> id_tok;
-    std::unique_ptr<ArgumentList> arg_list;
+    std::list<std::unique_ptr<Node>> arg_list;
   };
 
   // also Parameter
@@ -178,6 +167,7 @@ namespace ast {
       Node("Variable Declaration", tm),
       id_tok(id_tok),
       bound(std::move(bound)) {}
+    std::shared_ptr<IdToken> getIdTok() { return id_tok; }
 
    protected:
     std::shared_ptr<IdToken> id_tok;
@@ -197,30 +187,20 @@ namespace ast {
     std::list<std::unique_ptr<Node>> stmt_list;
   };
 
-  class ParameterList : public Node {
-   public:
-    ParameterList(std::unique_ptr<VariableDeclaration> var_decl,
-        std::unique_ptr<ParameterList> next_param) :
-      Node("Parameter List"),
-      var_decl(std::move(var_decl)),
-      next_param(std::move(next_param)) {}
-
-   protected:
-    std::unique_ptr<VariableDeclaration> var_decl;
-    std::unique_ptr<ParameterList> next_param;
-  };
-
   class ProcedureHeader : public Node {
    public:
     ProcedureHeader(const TypeMark& tm, const bool& global,
         std::shared_ptr<IdToken> id_tok,
-        std::unique_ptr<ParameterList> param_list) :
-      Node("Procedure Header", tm), global(global), id_tok(id_tok) {}
+        std::list<std::unique_ptr<VariableDeclaration>> param_list) :
+      Node("Procedure Header", tm),
+      global(global),
+      id_tok(id_tok),
+      param_list(std::move(param_list)) {}
 
    protected:
     bool global;
     std::shared_ptr<IdToken> id_tok;
-    std::unique_ptr<ParameterList> param_list;
+    std::list<std::unique_ptr<VariableDeclaration>> param_list;
   };
 
   class ProcedureDeclaration : public Node {

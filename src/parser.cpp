@@ -12,10 +12,8 @@
 #include "log.h"
 #include "scanner.h"
 #include "token.h"
-#include "type_checker.h"
 
-Parser::Parser() : env(new Environment()), scanner(env), type_checker(),
-    panic_mode(false) {}
+Parser::Parser() : env(new Environment()), scanner(env), panic_mode(false) {}
 
 bool Parser::init(const std::string& src_file) {
   bool init_success = true;
@@ -35,7 +33,10 @@ bool Parser::init(const std::string& src_file) {
 std::unique_ptr<ast::Program> Parser::parse() {
   LOG(INFO) << "Begin parsing";
   LOG(DEBUG) << "<program>";
-  auto prog = std::make_unique<ast::Program>(programHeader(), programBody());
+  auto prog_hdr = programHeader();
+  auto prog_body = programBody();
+  auto prog = std::make_unique<ast::Program>(std::move(prog_hdr),
+      std::move(prog_body));
   expect(TOK_PERIOD);
   scan();
   LOG(INFO) << "Done parsing";
@@ -161,7 +162,6 @@ std::list<std::unique_ptr<ast::Node>> Parser::declarations(bool is_global) {
     } else {
       decl_list.push_back(std::move(decl));
     }
-    expectScan(TOK_SEMICOL);
   }
   return decl_list;
 }
@@ -223,7 +223,8 @@ Parser::procedureDeclaration(const bool& is_global) {
     LOG(ERROR) << "Failed to parse procedure";
     return nullptr;
   }
-  return std::make_unique<ast::ProcedureDeclaration>(proc_hdr, proc_body);
+  return std::make_unique<ast::ProcedureDeclaration>(std::move(proc_hdr), 
+      std::move(proc_body));
 }
 
 //  <procedure_header>
@@ -242,9 +243,9 @@ Parser::procedureHeader(const bool& is_global) {
   // Begin new scope
   pushScope(id_tok);  // This adds id_tok to the new scope for recursion
   expectScan(TOK_LPAREN);
-  std::unique_ptr<ast::ParameterList> param_list = nullptr;
+  std::list<std::unique_ptr<ast::VariableDeclaration>> param_list;
   if (match(TOK_RW_VAR)) {
-    param_list = parameterList();
+    param_list = parameterList(std::move(param_list));
   }
   expectScan(TOK_RPAREN);
 
@@ -259,19 +260,28 @@ Parser::procedureHeader(const bool& is_global) {
 //  <parameter_list> ::=
 //    <parameter>`,' <parameter_list>
 //  | <parameter>
-// TODO: This could be a little cleaner if I have time...
-std::unique_ptr<ast::ParameterList> Parser::parameterList() {
+std::list<std::unique_ptr<ast::VariableDeclaration>>
+Parser::parameterList(std::list<std::unique_ptr<ast::VariableDeclaration>>
+    param_list) {  // Holy long declaration, Batman!
   LOG(DEBUG) << "<parameter_list>";
+
+  // Parse parameter declaration
   std::unique_ptr<ast::VariableDeclaration> par_tok = parameter();
   if (par_tok == nullptr) {
     LOG(ERROR) << "Ill-formed parameter; skipping";
-    return nullptr;
+    return param_list;
   }
+  function_stack.top()->addParam(par_tok->getIdTok());
+  param_list.push_back(std::move(par_tok));
+
+  // Get next argument
   if (match(TOK_COMMA)) {
     scan();
-    return std::make_unique<ast::ParameterList>(par_tok, parameterList());
+    return parameterList(std::move(param_list));
   }
-  return std::make_unique<ast::ParameterList>(par_tok, nullptr);
+
+  // Last argument was parsed
+  return param_list;
 }
 
 //  <parameter> ::=
@@ -404,9 +414,9 @@ std::unique_ptr<ast::ProcedureCall> Parser::procedureCall() {
     LOG(WARN) << "Skipping procedure call";
     return nullptr;
   }
-  std::unique_ptr<ast::ArgumentList> arg_list = nullptr;
+  std::list<std::unique_ptr<ast::Node>> arg_list;
   if (!match(TOK_RPAREN)) {
-    arg_list = argumentList();
+    arg_list = argumentList(std::move(arg_list));
   }
   if (!expectScan(TOK_RPAREN)) {
     LOG(WARN) << "Skipping procedure call";
@@ -454,10 +464,6 @@ std::unique_ptr<ast::VariableReference> Parser::destination() {
   // Array shenanigans
   std::unique_ptr<ast::Node> expr = nullptr;
   if (match(TOK_LBRACK)) {
-    LOG(DEBUG) << "Indexing array";
-    if (id_tok->getProcedure() || (id_tok->getNumElements() < 1)) {
-      LOG(ERROR) << "Attempt to index non-array symbol " << id_tok->getVal();
-    }
     scan();
     expr = expression();
     expectScan(TOK_RBRACK);
@@ -731,136 +737,108 @@ std::unique_ptr<ast::Node> Parser::termPrime(std::unique_ptr<ast::Node> lhs) {
 //  | `false'
 std::unique_ptr<ast::Node> Parser::factor() {
   LOG(DEBUG) << "<factor>";
+  std::unique_ptr<ast::Node> node;
 
-  //// Negative sign can only happen before <number> and <name>
-  //if (match(TOK_OP_ARITH) && (tok->getVal() == "-")) {
-    //scan();
-    //if (match(TOK_IDENT)) {
-      //std::shared_ptr<IdToken> id_tok = std::dynamic_pointer_cast<IdToken>(
-          //env->lookup(tok->getVal(), false));
-      //if (!id_tok) {
-        //LOG(ERROR) << "Identifier not declared in this scope: "
-            //<< tok->getStr();
-      //} else if (!id_tok->getProcedure()) {
-        //tm = name(size);
-      //} else {
-        //LOG(ERROR) << "Expected variable; got: " << tok->getStr();
-      //}
-    //} else if (match(TOK_NUM)) {
-      //std::shared_ptr<Token> num_tok = number();
-      //tm = num_tok->getTypeMark();
-      //size = 0;  // <number> literals are scalar
-    //} else {
-      //LOG(ERROR) << "Minus sign must be followed by <name> or <number>.";
-      //LOG(ERROR) << "Got: " << tok->getStr();
-    //}
+  // Negative sign can only happen before <number> and <name>
+  if (match(TOK_OP_ARITH) && (tok->getVal() == "-")) {
+    std::shared_ptr<Token> op_tok = tok;
+    scan();
+    if (match(TOK_IDENT)) {
+      std::shared_ptr<IdToken> id_tok = std::dynamic_pointer_cast<IdToken>(
+          env->lookup(tok->getVal(), false));
+      if (id_tok == nullptr) {
+        LOG(ERROR) << "Identifier not in this scope: " << tok->getStr();
+      } else if (!id_tok->getProcedure()) {
+        node = name();
+      } else {
+        LOG(ERROR) << "Expected variable; got: " << tok->getStr();
+      }
+    } else if (match(TOK_NUM)) {
+      node = number();
+    } else {
+      LOG(ERROR) << "Minus sign must be followed by <name> or <number>.";
+      LOG(ERROR) << "Got: " << tok->getStr();
+    }
 
-  //// `('<expression>`)'
-  //} else if (match(TOK_LPAREN)) {
-    //scan();
-    //tm = expression(size);
-    //expectScan(TOK_RPAREN);
+    // Assembly negative unary op node
+    if (node != nullptr) {
+      node = std::make_unique<ast::UnaryOp>(std::move(node), op_tok);
+    }
 
-  //// <procedure_call> or <name>
-  //} else if (match(TOK_IDENT)) {
-    //std::shared_ptr<IdToken> id_tok = std::dynamic_pointer_cast<IdToken>(
-        //env->lookup(tok->getVal(), false));
-    //if (!id_tok) {
-      //LOG(ERROR) << "Identifier not declared in this scope: "
-          //<< tok->getStr();
-    //} else if (id_tok->getProcedure()) {
-      //tm = procedureCall();
-      //size = 0;  // Procedure calls return scalars
-    //} else {
-      //tm = name(size);
-    //}
+  // `('<expression>`)'
+  } else if (match(TOK_LPAREN)) {
+    scan();
+    node = expression();
+    expectScan(TOK_RPAREN);
 
-  //// <number>
-  //} else if (match(TOK_NUM)) {
-    //std::shared_ptr<Token> num_tok = number();
-    //tm = num_tok->getTypeMark();
-    //size = 0;  // <number> literals are scalars
+  // <procedure_call> or <name>
+  } else if (match(TOK_IDENT)) {
+    std::shared_ptr<IdToken> id_tok = std::dynamic_pointer_cast<IdToken>(
+        env->lookup(tok->getVal(), false));
+    if (!id_tok) {
+      LOG(ERROR) << "Identifier not declared in this scope: "
+          << tok->getStr();
+    } else if (id_tok->getProcedure()) {
+      node = procedureCall();
+    } else {
+      node = name();
+    }
 
-  //// <string>
-  //} else if (match(TOK_STR)) {
-    //std::shared_ptr<LiteralToken<std::string>> str_tok = string();
-    //tm = str_tok->getTypeMark();
-    //size = 0;  // <string> literals are scalars
+  // <number>
+  } else if (match(TOK_NUM)) {
+    node = number();
 
-  //// `true'
-  //} else if (match(TOK_RW_TRUE)) {
-    //tm = TYPE_BOOL;
-    //size = 0;  // `true' literals are scalars
-    //scan();
+  // <string>
+  } else if (match(TOK_STR)) {
+    node = string();
 
-  //// `false'
-  //} else if (match(TOK_RW_FALSE)) {
-    //tm = TYPE_BOOL;
-    //size = 0;  // `false' literals are scalars
-    //scan();
+  // `true'
+  } else if (match(TOK_RW_TRUE)) {
+    node = std::make_unique<ast::Literal<bool>>(TYPE_BOOL, true);
+    scan();
 
-  //// Oof
-  //} else {
-    //LOG(ERROR) << "Unexpected token: " << tok->getStr();
-    //tm = TYPE_NONE;
-    //size = 0;
-    //panic();
-  //}
-  //return tm;
-//}
+  // `false'
+  } else if (match(TOK_RW_FALSE)) {
+    node = std::make_unique<ast::Literal<bool>>(TYPE_BOOL, false);
+    scan();
 
-////  <name> ::=
-////    <identifier> [`['<expression>`]']
-//std::unique_ptr<ast::VariableReference> Parser::name() {
-  //LOG(DEBUG) << "<name>";
-  //std::shared_ptr<IdToken> id_tok = identifier(true);
-  //if (id_tok->getProcedure()) {
-    //LOG(ERROR) << "Expected variable; got procedure " << id_tok->getVal();
-  //}
-  //TypeMark tm = id_tok->getTypeMark();
-  //size = id_tok->getNumElements();
-  //if (match(TOK_LBRACK)) {
-    //LOG(DEBUG) << "Indexing array";
-    //size = 0;  // If indexing, it's a single element not an array
-    //if (id_tok->getProcedure() || (id_tok->getNumElements() < 1)) {
-      //LOG(ERROR) << "Attempt to index non-array symbol " << id_tok->getVal();
-    //}
-    //scan();
-    //int idx_size = 0;
-    //TypeMark tm_idx = expression(idx_size);
-    //type_checker.checkArrayIndex(tm_idx);
-    //if (idx_size > 0) {
-      //LOG(ERROR) << "Invalid index; expected scalar, got array";
-    //}
-    //expectScan(TOK_RBRACK);
-  //}
-  //return tm;
-  return nullptr;
+  // Oof
+  } else {
+    LOG(ERROR) << "Unexpected token: " << tok->getStr();
+  }
+  return node;
+}
+
+//  <name> ::=
+//    <identifier> [`['<expression>`]']
+std::unique_ptr<ast::VariableReference> Parser::name() {
+  LOG(DEBUG) << "<name>";
+  return destination();  // This is the same as <destination>
 }
 
 //  <argument_list> ::=
 //    <expression> `,' <argument_list>
 //  | <expression>
-std::unique_ptr<ast::ArgumentList>
-Parser::argumentList() {
+std::list<std::unique_ptr<ast::Node>>
+Parser::argumentList(std::list<std::unique_ptr<ast::Node>> arg_list) {
   LOG(DEBUG) << "<argument_list>";
 
   // Parse argument expression
   std::unique_ptr<ast::Node> expr = expression();
   if (expr == nullptr) {
     LOG(ERROR) << "Failed to parse expression";
-    return nullptr;
+    return arg_list;
   }
+  arg_list.push_back(std::move(expr));
 
   // Get next argument
   if (match(TOK_COMMA)) {
     scan();
-    return std::make_unique<ast::ArgumentList>(std::move(expr),
-        argumentList());
+    return argumentList(std::move(arg_list));
   }
 
   // Last argument was parsed
-  return std::make_unique<ast::ArgumentList>(std::move(expr), nullptr);
+  return arg_list;
 }
 
 //  <number> ::=
@@ -897,8 +875,8 @@ std::unique_ptr<ast::Literal<std::string>> Parser::string() {
   if (str_tok == nullptr) {  // Cast should never fail but...
     LOG(ERROR) << "Failed to parse string";
   } else {
-    str_node = std::make_unique<ast::Literal<std::string>>(str_tok->getVal(),
-        str_tok->getTypeMark());
+    str_node = std::make_unique<ast::Literal<std::string>>(
+        str_tok->getTypeMark(), str_tok->getVal());
   }
   return str_node;
 }
