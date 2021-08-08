@@ -42,7 +42,7 @@ private:
   void parameterList();
   std::shared_ptr<IdToken> parameter();
   void procedureBody();
-  std::shared_ptr<IdToken> variableDeclaration(const bool&);
+  std::shared_ptr<IdToken> variableDeclaration(const bool&, const bool&);
   TypeMark typeMark();
   int bound();
   void statement();

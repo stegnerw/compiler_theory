@@ -36,6 +36,7 @@ CodeGen::declareVariable(std::shared_ptr<IdToken> id_tok, bool is_global) {
     LOG(ERROR) << "Attempted to declare invalid variable";
     return;
   }
+  LOG(DEBUG) << "Code generating " << id_tok->getStr();
 
   // Get type info
   TypeMark tm = id_tok->getTypeMark();
@@ -125,6 +126,10 @@ void CodeGen::addFunction(std::shared_ptr<IdToken> fun_tok) {
   // Store parameters for future access
   // TODO: This
   fun->llvm_code += "; Store parameters (coming soon!)\n";
+}
+
+void CodeGen::storeVariable(std::shared_ptr<IdToken> id_tok, std::string reg) {
+  
 }
 
 void CodeGen::closeFunction() {

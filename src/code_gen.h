@@ -25,6 +25,7 @@ public:
   void declareVariable(std::shared_ptr<IdToken>, bool);
   void addFunction(std::shared_ptr<IdToken>);
   void closeFunction();
+  void storeVariable(std::shared_ptr<IdToken>, std::string);
 
 private:
 

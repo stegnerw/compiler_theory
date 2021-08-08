@@ -206,7 +206,7 @@ void Parser::declaration(bool is_global) {
   if (matchToken(TOK_RW_PROC)) {
     procedureDeclaration(is_global);
   } else if(matchToken(TOK_RW_VAR)) {
-    variableDeclaration(is_global);
+    variableDeclaration(is_global, true);
   } else {
     LOG(ERROR) << "Unexpected token: " << tok->getStr();
     LOG(ERROR) << "Expected: " << Token::getTokenName(TOK_RW_PROC) << " or "
@@ -276,7 +276,7 @@ void Parser::parameterList() {
 //    <variable_declaration>
 std::shared_ptr<IdToken> Parser::parameter() {
   LOG(DEBUG) << "<parameter>";
-  return variableDeclaration(false);
+  return variableDeclaration(false, false);
 }
 
 //  <procedure_body> ::=
@@ -298,7 +298,8 @@ void Parser::procedureBody() {
 
 //  <variable_declaration> ::=
 //    `variable' <identifier> `:' <type_mark> [`['<bound>`]']
-std::shared_ptr<IdToken> Parser::variableDeclaration(const bool& is_global) {
+std::shared_ptr<IdToken> Parser::variableDeclaration(const bool& is_global,
+    const bool& emit) {
   LOG(DEBUG) << "<variable_declaration>";
 
   // Making this in case panic mode happens before the call to identifier()
@@ -323,7 +324,7 @@ std::shared_ptr<IdToken> Parser::variableDeclaration(const bool& is_global) {
     if (panic_mode) return id_tok;  // No need to continue
     scan();
   }
-  code_gen.declareVariable(id_tok, is_global);
+  if (emit) code_gen.declareVariable(id_tok, is_global);
   LOG(DEBUG) << "Declared variable " << id_tok->getStr();
   return id_tok;
 }
