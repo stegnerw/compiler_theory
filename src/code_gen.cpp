@@ -11,20 +11,20 @@
 
 // TODO: Anything useful to do here?
 CodeGen::CodeGen() {
-  header += "; Woah! That's some nice ASSembly there!\n";
-  globals_code += "\n; Global definitions\n";
-  string_literals_code += "\n; String literal definitions\n";
-  declarations_code += "\n; Runtime declarations\n";
-  body_code += "\n; Program body\n";
+  header << "; Woah! That's some nice ASSembly there!\n";
+  globals_code << "\n; Global definitions\n";
+  string_literals_code << "\n; String literal definitions\n";
+  declarations_code << "\n; Runtime declarations\n";
+  body_code << "\n; Program body\n";
 }
 
 std::string CodeGen::emitCode() {
   std::stringstream ss;
-  ss << header;
-  ss << globals_code;
-  ss << string_literals_code;
-  ss << declarations_code;
-  ss << body_code;
+  ss << header.str();
+  ss << globals_code.str();
+  ss << string_literals_code.str();
+  ss << declarations_code.str();
+  ss << body_code.str();
   return ss.str();
 }
 
@@ -46,8 +46,8 @@ CodeGen::declareVariable(std::shared_ptr<IdToken> id_tok, bool is_global) {
 
   if (is_global) {
     llvm_handle = "@" + id_tok->getVal();
-    globals_code += llvm_handle + " = global " + llvm_type
-      + " zeroinitializer\n";
+    globals_code << llvm_handle << " = global " << llvm_type
+      << " zeroinitializer\n";
 
   //local variable
   } else {
@@ -59,8 +59,8 @@ CodeGen::declareVariable(std::shared_ptr<IdToken> id_tok, bool is_global) {
     }
 
     llvm_handle = "%" + id_tok->getVal();
-    function_stack.top()->llvm_code += llvm_handle + " = alloca " + llvm_type
-      + "\n";
+    function_stack.top()->llvm_code << llvm_handle << " = alloca " << llvm_type
+      << "\n";
   }
 
   // Store handle
@@ -86,11 +86,11 @@ void CodeGen::addFunction(std::shared_ptr<IdToken> fun_tok) {
     llvm_handle += std::to_string(fun_count);
   }
   fun_tok->setLlvmHandle(llvm_handle);
-  fun->llvm_code += "define " + getLlvmType(fun_tok->getTypeMark()) + " "
-    + llvm_handle;
+  fun->llvm_code << "define " << getLlvmType(fun_tok->getTypeMark()) << " "
+    << llvm_handle;
 
   // Add parameters
-  fun->llvm_code += "(";
+  fun->llvm_code << "(";
   int num_args = fun_tok->getNumElements();
   for (int idx = 0; idx < num_args; idx++) {
     std::shared_ptr<IdToken> param_tok = fun_tok->getParam(idx);
@@ -105,31 +105,33 @@ void CodeGen::addFunction(std::shared_ptr<IdToken> fun_tok) {
     std::string param_llvm_type = getArrayType(param_tok->getTypeMark(),
         param_tok->getNumElements());
     // My llvm-as doesn't like me putting the handle
-    fun->llvm_code += param_llvm_type;// + " " + param_llvm_handle;
+    fun->llvm_code << param_llvm_type;// << " " << param_llvm_handle;
     fun->reg_count++;
 
     // Add comma if needed
     if (idx < num_args-1) {
-      fun->llvm_code += ", ";
+      fun->llvm_code << ", ";
     }
   }
-  fun->llvm_code += "){\n";
+  fun->llvm_code << "){\n";
   fun->reg_count++;
   function_stack.push(fun);
 
   // Allocate memory for new parameters because they are mutable
-  fun->llvm_code += "; Allocate parameters\n";
+  fun->llvm_code << "; Allocate parameters\n";
   for (int idx = 0; idx < num_args; idx++) {
     declareVariable(fun_tok->getParam(idx), false);
   }
 
   // Store parameters for future access
   // TODO: This
-  fun->llvm_code += "; Store parameters (coming soon!)\n";
-}
-
-void CodeGen::storeVariable(std::shared_ptr<IdToken> id_tok, std::string reg) {
-  
+  fun->llvm_code << "; Store parameters\n";
+  for (int idx = 0; idx < num_args; idx++) {
+    std::shared_ptr<IdToken> param_tok = fun_tok->getParam(idx);
+    std::string reg = "%" + std::to_string(idx);
+    TypeMark reg_tm = param_tok->getTypeMark();
+    store(param_tok, reg, reg_tm);
+  }
 }
 
 void CodeGen::closeFunction() {
@@ -143,9 +145,80 @@ void CodeGen::closeFunction() {
   std::shared_ptr<IdToken> fun_tok = fun->id_tok;
 
   // Generate a return statement just in case
-  fun->llvm_code += getBlankReturn() + "\n}\n";
-  body_code += fun->llvm_code;
+  fun->llvm_code << getBlankReturn() + "\n}\n";
+  fun->reg_count++;
+  body_code << fun->llvm_code.str();
   function_stack.pop();
+}
+
+void CodeGen::store(std::shared_ptr<IdToken> id_tok, std::string reg,
+    const TypeMark& reg_tm) {
+
+  // Validate id token
+  if (id_tok == nullptr || id_tok->getType() == TOK_INVALID) {
+    LOG(ERROR) << "Invalid store generation";
+    return;
+  }
+  LOG(DEBUG) << "Generating store " << id_tok->getStr();
+  LOG(DEBUG) << "Storing to " << reg;
+
+  // Make sure stack is okay
+  if (function_stack.empty()) {
+    LOG(ERROR) << "Cannot store with empty function stack";
+    return;
+  }
+  std::shared_ptr<struct Function> fun = function_stack.top();
+
+  // Check if we have to typecast
+  TypeMark var_tm = id_tok->getTypeMark();
+  if (var_tm != reg_tm) {
+    reg = convert(reg_tm, var_tm, reg);
+  }
+
+  // Emit the store command
+  std::string llvm_var_tm = getLlvmType(var_tm);
+  std::string var_reg = id_tok->getLlvmHandle();
+  fun->llvm_code << "store " << llvm_var_tm << " " << reg << ", "
+    << llvm_var_tm << "* " << var_reg << "\n";
+}
+
+std::string CodeGen::load(std::shared_ptr<IdToken> id_tok, std::string reg) {
+  // Validate id token
+  if (id_tok == nullptr || id_tok->getType() == TOK_INVALID) {
+    LOG(ERROR) << "Invalid store generation";
+    return "BAD_REG";
+  }
+  LOG(DEBUG) << "Generating store " << id_tok->getStr();
+  LOG(DEBUG) << "Storing to " << reg;
+
+  // Make sure stack is okay
+  if (function_stack.empty()) {
+    LOG(ERROR) << "Cannot store with empty function stack";
+    return "BAD_REG";
+  }
+  std::shared_ptr<struct Function> fun = function_stack.top();
+
+  // Emit the load command
+  std::string new_reg = "%" + std::to_string(
+      function_stack.top()->reg_count++);
+  std::string llvm_var_tm = getLlvmType(id_tok->getTypeMark());
+  fun->llvm_code << new_reg << " = load " << llvm_var_tm << ", " << llvm_var_tm
+    << "* " << reg;
+
+  return new_reg;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Comment functions
+///////////////////////////////////////////////////////////////////////////////
+
+void CodeGen::commentDecl() {
+  if (function_stack.empty()) {
+    LOG(ERROR) << "Cannot comment declarations; function stack empty";
+    return;
+  }
+  function_stack.top()->llvm_code << "\n; Local variable declarations\n";
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -182,7 +255,7 @@ std::string CodeGen::getBlankReturn() {
   // Make sure we have a function to return from
   if (function_stack.empty()) {
     LOG(ERROR) << "No function to return from";
-    return "BAD RETURN";
+    return "; BAD RETURN";
   }
   TypeMark tm = function_stack.top()->id_tok->getTypeMark();
 
@@ -208,4 +281,75 @@ std::string CodeGen::getBlankReturn() {
   }
 
   return ret;
+}
+
+std::string CodeGen::convert(const TypeMark& start_tm, const TypeMark& end_tm,
+    std::string reg) {
+
+  // Make sure function stack is okay
+  if (function_stack.empty()) {
+    LOG(ERROR) << "Cannot convert; empty function stack";
+    return "; BAD CONVERSION";
+  }
+  std::string new_reg = "%" + std::to_string(
+      function_stack.top()->reg_count++);
+  std::stringstream ss;
+  ss << new_reg << " = ";
+
+  switch (start_tm) {
+    case TYPE_INT:
+      switch (end_tm) {
+        case TYPE_FLT:  // signed int to floating point
+          ss << "sitofp " << getLlvmType(start_tm) << " " << reg << " to "
+            << getLlvmType(end_tm);
+          break;
+        case TYPE_BOOL:  // integer compare not equal
+          ss << "icmp ne " << getLlvmType(start_tm) << " " << reg << ", 0";
+          break;
+        default:
+          LOG(ERROR) << "Bad type conversion";
+          LOG(ERROR) << Token::getTypeMarkName(start_tm) << " to "
+           << Token::getTypeMarkName(end_tm);
+          return "; BAD CONVERSION";
+      }
+      break;
+
+    case TYPE_FLT:
+      switch (end_tm) {
+        case TYPE_INT:  // floating point to signed int
+          ss << "fptosi " << getLlvmType(start_tm) << " " << reg << " to "
+            << getLlvmType(end_tm);
+          break;
+        default:
+          LOG(ERROR) << "Bad type conversion";
+          LOG(ERROR) << Token::getTypeMarkName(start_tm) << " to "
+           << Token::getTypeMarkName(end_tm);
+          return "; BAD CONVERSION";
+      }
+      break;
+
+    case TYPE_BOOL:
+      switch (end_tm) {
+        case TYPE_INT:  // zero sign extend
+          ss << "zext " << getLlvmType(start_tm) << " " << reg << " to "
+            << getLlvmType(end_tm);
+          break;
+        default:
+          LOG(ERROR) << "Bad type conversion";
+          LOG(ERROR) << Token::getTypeMarkName(start_tm) << " to "
+           << Token::getTypeMarkName(end_tm);
+          return "; BAD CONVERSION";
+      }
+      break;
+
+    default:
+      LOG(ERROR) << "Bad type conversion";
+      LOG(ERROR) << Token::getTypeMarkName(start_tm) << " to "
+       << Token::getTypeMarkName(end_tm);
+      return "; BAD CONVERSION";
+  }
+
+  // Emit conversion and return new register reference
+  function_stack.top()->llvm_code << ss.str();
+  return new_reg;
 }

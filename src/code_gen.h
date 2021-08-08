@@ -13,7 +13,7 @@
 struct Function {
   int if_count, loop_count, reg_count;
   std::shared_ptr<IdToken> id_tok;
-  std::string llvm_code;
+  std::stringstream llvm_code;
   std::stack<int> if_stack, loop_stack;  // For label indexing
   Function(const std::shared_ptr<IdToken>& id_tok) : id_tok(id_tok) {}
 };
@@ -25,18 +25,22 @@ public:
   void declareVariable(std::shared_ptr<IdToken>, bool);
   void addFunction(std::shared_ptr<IdToken>);
   void closeFunction();
-  void storeVariable(std::shared_ptr<IdToken>, std::string);
+  void store(std::shared_ptr<IdToken>, std::string, const TypeMark&);
+  std::string load(std::shared_ptr<IdToken>, std::string);
+
+  // Comment functions
+  void commentDecl();
 
 private:
 
   // Code compartmentalization strings for proper emission order
   // Globals and string literals could be combined, but my brain likes them
   // separate
-  std::string header;
-  std::string globals_code;  // global declarations
-  std::string string_literals_code;  // String literal declarations
-  std::string declarations_code;  // runtime declarations for print, etc.
-  std::string body_code;  // function definitions and their bodies
+  std::stringstream header;
+  std::stringstream globals_code;  // global declarations
+  std::stringstream string_literals_code;  // String literal declarations
+  std::stringstream declarations_code;  // runtime declarations for print, etc.
+  std::stringstream body_code;  // function definitions and their bodies
 
   // Stack and map to control emission and naming of functions
   // Stack avoids nesting definitions
@@ -45,10 +49,15 @@ private:
   std::stack<std::shared_ptr<Function>> function_stack;
   std::unordered_map<std::string, int> function_counter;
 
+  // String tracking
+  //std::unordered_map<std::string, std::string> string_map;
+  //int string_counter;
+
   // Private helper functions
   std::string getLlvmType(const TypeMark&);
   std::string getArrayType(const TypeMark&, const int&);
   std::string getBlankReturn();
+  std::string convert(const TypeMark&, const TypeMark&, std::string);
 
 };
 
