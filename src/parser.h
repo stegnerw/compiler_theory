@@ -7,6 +7,7 @@
 #include <string>
 #include <unordered_map>
 
+#include "code_gen.h"
 #include "environment.h"
 #include "scanner.h"
 #include "token.h"
@@ -21,7 +22,7 @@ public:
 private:
   std::shared_ptr<Environment> env;
   Scanner scanner;
-  TypeChecker type_checker;
+  CodeGen code_gen;
   std::shared_ptr<Token> tok;
   std::stack<std::shared_ptr<IdToken>> function_stack;
   bool panic_mode;

@@ -7,13 +7,14 @@
 #include <string>
 #include <unordered_map>
 
+#include "code_gen.h"
 #include "environment.h"
 #include "log.h"
 #include "scanner.h"
 #include "token.h"
 #include "type_checker.h"
 
-Parser::Parser() : env(new Environment()), scanner(env), type_checker(),
+Parser::Parser() : env(new Environment()), scanner(env), code_gen(),
     panic_mode(false) {}
 
 bool Parser::init(const std::string& src_file) {
@@ -41,6 +42,8 @@ bool Parser::parse() {
   LOG(INFO) << "Done parsing";
   if (LOG::hasErrored()) {
     LOG(WARN) << "Parsing had errors; no code generated";
+  }{// else {
+    LOG(INFO) << "Emitting code:\n" << code_gen.emitCode();
   }
   if (tok->getType() != TOK_EOF) {
     LOG(WARN) << "Done parsing but not EOF.";
@@ -310,6 +313,7 @@ std::shared_ptr<IdToken> Parser::variableDeclaration(const bool& is_global) {
     if (panic_mode) return id_tok;  // No need to continue
     scan();
   }
+  code_gen.declareVariable(id_tok, is_global);
   LOG(DEBUG) << "Declared variable " << id_tok->getStr();
   return id_tok;
 }
@@ -415,8 +419,8 @@ void Parser::assignmentStatement() {
   scan();
   int expr_size = 0;
   TypeMark tm_expr = expression(expr_size);
-  type_checker.checkCompatible(op_tok, tm_dest, tm_expr);
-  type_checker.checkArraySize(op_tok, dest_size, expr_size);
+  type_checker::checkCompatible(op_tok, tm_dest, tm_expr);
+  type_checker::checkArraySize(op_tok, dest_size, expr_size);
 }
 
 //  <destination> ::=
@@ -440,7 +444,7 @@ TypeMark Parser::destination(int& size) {
     scan();
     int idx_size = 0;
     TypeMark tm_idx = expression(idx_size);
-    type_checker.checkArrayIndex(tm_idx);
+    type_checker::checkArrayIndex(tm_idx);
     if (idx_size > 0) {
       LOG(ERROR) << "Invalid index; Expected scalar, got array";
     }
@@ -467,7 +471,7 @@ void Parser::ifStatement() {
   // Ensure expression parses to `bool'
   int expr_size = 0;
   TypeMark tm = expression(expr_size);
-  if (!type_checker.checkCompatible(tm, TYPE_BOOL)) {
+  if (!type_checker::checkCompatible(tm, TYPE_BOOL)) {
     LOG(ERROR) << "Invalid if statement expression of type "
       << Token::getTypeMarkName(tm) << " received";
     LOG(ERROR) << "If statement expression must resolve to type "
@@ -515,7 +519,7 @@ void Parser::loopStatement() {
   // Ensure expression parses to `bool'
   int expr_size = 0;
   TypeMark tm = expression(expr_size);
-  if (!type_checker.checkCompatible(tm, TYPE_BOOL)) {
+  if (!type_checker::checkCompatible(tm, TYPE_BOOL)) {
     LOG(ERROR) << "Invalid loop statement expression of type "
       << Token::getTypeMarkName(tm) << " received";
     LOG(ERROR) << "Loop statement expression must resolve to type "
@@ -547,7 +551,7 @@ void Parser::returnStatement() {
   int expr_size = 0;
   TypeMark tm_expr = expression(expr_size);
   TypeMark tm_ret = function_stack.top()->getTypeMark();
-  if (!type_checker.checkCompatible(tm_expr, tm_ret)) {
+  if (!type_checker::checkCompatible(tm_expr, tm_ret)) {
     LOG(ERROR) << "Expression type " << Token::getTypeMarkName(tm_expr)
         << " not compatible with return type "
         << Token::getTypeMarkName(tm_ret);
@@ -595,8 +599,8 @@ TypeMark Parser::expression(int& size) {
 
   // Check type compatibility for bitwise not
   if (bitwise_not) {
-    type_checker.checkCompatible(op_tok, tm_arith);
-    type_checker.checkArraySize(op_tok, size);
+    type_checker::checkCompatible(op_tok, tm_arith);
+    type_checker::checkArraySize(op_tok, size);
   }
   return expressionPrime(tm_arith, size);
 }
@@ -614,8 +618,8 @@ TypeMark Parser::expressionPrime(const TypeMark& tm, int& size) {
     scan();
     int arith_size = 0;
     TypeMark tm_arith = arithOp(arith_size);
-    type_checker.checkCompatible(op_tok, tm, tm_arith);
-    type_checker.checkArraySize(op_tok, size, arith_size);
+    type_checker::checkCompatible(op_tok, tm, tm_arith);
+    type_checker::checkArraySize(op_tok, size, arith_size);
     size = std::max(size, arith_size);
     expressionPrime(tm_arith, size);
   }
@@ -646,8 +650,8 @@ TypeMark Parser::arithOpPrime(const TypeMark& tm, int& size) {
   scan();
   int relat_size = 0;
   TypeMark tm_relat = relation(relat_size);
-  type_checker.checkCompatible(op_tok, tm, tm_relat);
-  type_checker.checkArraySize(op_tok, size, relat_size);
+  type_checker::checkCompatible(op_tok, tm, tm_relat);
+  type_checker::checkArraySize(op_tok, size, relat_size);
 
   // If either side is `float', cast to `float'
   TypeMark tm_result;
@@ -686,8 +690,8 @@ TypeMark Parser::relationPrime(const TypeMark& tm, int& size) {
   scan();
   int term_size = 0;
   TypeMark tm_term = term(term_size);
-  type_checker.checkCompatible(op_tok, tm, tm_term);
-  type_checker.checkArraySize(op_tok, size, term_size);
+  type_checker::checkCompatible(op_tok, tm, tm_term);
+  type_checker::checkArraySize(op_tok, size, term_size);
   size = std::max(size, term_size);
   relationPrime(tm_term, size);
   return TYPE_BOOL;
@@ -715,8 +719,8 @@ TypeMark Parser::termPrime(const TypeMark& tm, int& size) {
   scan();
   int fact_size = 0;
   TypeMark tm_fact = factor(fact_size);
-  type_checker.checkCompatible(op_tok, tm, tm_fact);
-  type_checker.checkArraySize(op_tok, size, fact_size);
+  type_checker::checkCompatible(op_tok, tm, tm_fact);
+  type_checker::checkArraySize(op_tok, size, fact_size);
 
   // If either side is `float', cast to `float'
   TypeMark tm_result;
@@ -839,7 +843,7 @@ TypeMark Parser::name(int& size) {
     scan();
     int idx_size = 0;
     TypeMark tm_idx = expression(idx_size);
-    type_checker.checkArrayIndex(tm_idx);
+    type_checker::checkArrayIndex(tm_idx);
     if (idx_size > 0) {
       LOG(ERROR) << "Invalid index; expected scalar, got array";
     }
@@ -861,7 +865,7 @@ void Parser::argumentList(const int& idx, std::shared_ptr<IdToken> fun_tok) {
   if (!param) {
     LOG(ERROR) << "Unexpected parameter with type "
         << Token::getTypeMarkName(tm_arg);
-  } else if (!type_checker.checkCompatible(param->getTypeMark(), tm_arg)) {
+  } else if (!type_checker::checkCompatible(param->getTypeMark(), tm_arg)) {
     LOG(ERROR) << "Expected parameter with type "
         << Token::getTypeMarkName(param->getTypeMark()) << "; got "
         << Token::getTypeMarkName(tm_arg);
