@@ -27,6 +27,10 @@ bool Parser::init(const std::string& src_file) {
   } else {
     scan();
   }
+  auto main_fun = std::make_shared<IdToken>(TOK_IDENT, "main");
+  main_fun->setTypeMark(TYPE_INT);
+  main_fun->setProcedure(true);
+  code_gen.addFunction(main_fun);
   return init_success;
 }
 
@@ -40,6 +44,7 @@ bool Parser::parse() {
   expectToken(TOK_PERIOD);
   scan();
   LOG(INFO) << "Done parsing";
+  code_gen.closeFunction();
   if (LOG::hasErrored()) {
     LOG(WARN) << "Parsing had errors; no code generated";
   }{// else {  // TODO: Add back in the else
@@ -78,6 +83,7 @@ void Parser::pop_scope() {
       << function_stack.top()->getVal() << ":\n" << env->getLocalStr();
     env->pop();
     function_stack.pop();
+    code_gen.closeFunction();
   }
 }
 
@@ -242,6 +248,7 @@ void Parser::procedureHeader(const bool& is_global) {
   }
   expectToken(TOK_RPAREN);
   scan();
+  code_gen.addFunction(id_tok);
 }
 
 //  <parameter_list> ::=

@@ -15,8 +15,7 @@ struct Function {
   std::shared_ptr<IdToken> id_tok;
   std::string llvm_code;
   std::stack<int> if_stack, loop_stack;  // For label indexing
-  Function(const std::shared_ptr<IdToken>& id_tok) :
-    if_count(0), loop_count(0), reg_count(0), id_tok(id_tok) {}
+  Function(const std::shared_ptr<IdToken>& id_tok) : id_tok(id_tok) {}
 };
 
 class CodeGen {
@@ -25,12 +24,14 @@ public:
   std::string emitCode();
   void declareVariable(std::shared_ptr<IdToken>, bool);
   void addFunction(std::shared_ptr<IdToken>);
+  void closeFunction();
 
 private:
 
   // Code compartmentalization strings for proper emission order
   // Globals and string literals could be combined, but my brain likes them
   // separate
+  std::string header;
   std::string globals_code;  // global declarations
   std::string string_literals_code;  // String literal declarations
   std::string declarations_code;  // runtime declarations for print, etc.
@@ -40,12 +41,13 @@ private:
   // Stack avoids nesting definitions
   // Map avoids naming conflicts because LLVM procedures are global but the
   // language spec has scoping rules for function names
-  std::stack<Function> function_stack;
+  std::stack<std::shared_ptr<Function>> function_stack;
   std::unordered_map<std::string, int> function_counter;
 
   // Private helper functions
   std::string getLlvmType(const TypeMark&);
-  std::string getArrayType(const std::string&, const int&);
+  std::string getArrayType(const TypeMark&, const int&);
+  std::string getBlankReturn();
 
 };
 
