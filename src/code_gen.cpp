@@ -23,18 +23,18 @@ std::string CodeGen::emitCode() {
 
   // Emit globals
   ss << "; Global definitions" << std::endl;
-  ss << globals_code.str();
-  ss << string_literals_code.str();
+  ss << globals_code;
+  ss << string_literals_code;
   ss << std::endl;
 
   // Emit declarations
   ss << "; Runtime declarations" << std::endl;
-  ss << declarations_code.str();
+  ss << declarations_code;
   ss << std::endl;
 
   // Emit body code
   ss << "; Program body" << std::endl;
-  ss << body_code.str();
+  ss << body_code;
   ss << std::endl;
 
   // Return assembly code string
@@ -63,8 +63,8 @@ CodeGen::declareVariable(std::shared_ptr<IdToken> id_tok, bool is_global) {
 
   if (is_global) {
     llvm_handle = "@" + id_tok->getVal();
-    globals_code << llvm_handle << " = global " << llvm_type
-      << " zeroinitializer\n";
+    globals_code += llvm_handle + " = global " + llvm_type
+      + " zeroinitializer\n";
 
   //local variable
   } else {
@@ -76,11 +76,16 @@ CodeGen::declareVariable(std::shared_ptr<IdToken> id_tok, bool is_global) {
     }
 
     llvm_handle = "%" + id_tok->getVal();
-    function_stack.top().llvm_code << llvm_handle << " = alloca " << llvm_type;
+    function_stack.top().llvm_code += llvm_handle + " = alloca " + llvm_type;
   }
 
   // Store handle
   id_tok->setLlvmHandle(llvm_handle);
+}
+
+void CodeGen::addFunction(std::shared_ptr<IdToken> id_tok) {
+  struct Function fun(id_tok);
+  function_stack.push(fun);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

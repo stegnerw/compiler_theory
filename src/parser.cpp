@@ -42,7 +42,7 @@ bool Parser::parse() {
   LOG(INFO) << "Done parsing";
   if (LOG::hasErrored()) {
     LOG(WARN) << "Parsing had errors; no code generated";
-  }{// else {
+  }{// else {  // TODO: Add back in the else
     LOG(INFO) << "Emitting code:\n" << code_gen.emitCode();
   }
   if (tok->getType() != TOK_EOF) {

@@ -13,8 +13,10 @@
 struct Function {
   int if_count, loop_count, reg_count;
   std::shared_ptr<IdToken> id_tok;
-  std::stringstream llvm_code;
+  std::string llvm_code;
   std::stack<int> if_stack, loop_stack;  // For label indexing
+  Function(const std::shared_ptr<IdToken>& id_tok) :
+    if_count(0), loop_count(0), reg_count(0), id_tok(id_tok) {}
 };
 
 class CodeGen {
@@ -26,13 +28,13 @@ public:
 
 private:
 
-  // Code compartmentalization string streams for proper emission order
+  // Code compartmentalization strings for proper emission order
   // Globals and string literals could be combined, but my brain likes them
   // separate
-  std::stringstream globals_code;  // global declarations
-  std::stringstream string_literals_code;  // String literal declarations
-  std::stringstream declarations_code;  // runtime declarations for print, etc.
-  std::stringstream body_code;  // function definitions and their bodies
+  std::string globals_code;  // global declarations
+  std::string string_literals_code;  // String literal declarations
+  std::string declarations_code;  // runtime declarations for print, etc.
+  std::string body_code;  // function definitions and their bodies
 
   // Stack and map to control emission and naming of functions
   // Stack avoids nesting definitions
