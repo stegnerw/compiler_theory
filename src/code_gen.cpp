@@ -215,7 +215,8 @@ void CodeGen::store(std::shared_ptr<IdToken> id_tok, std::string reg,
     << llvm_var_tm << "* " << var_reg << "\n";
 }
 
-std::string CodeGen::loadVar(std::shared_ptr<IdToken> id_tok, std::string reg) {
+std::string
+CodeGen::loadVar(std::shared_ptr<IdToken> id_tok, std::string reg) {
   // Validate id token
   if (id_tok == nullptr || id_tok->getType() == TOK_INVALID) {
     LOG(ERROR) << "Invalid store generation";
@@ -252,6 +253,14 @@ void CodeGen::commentDecl() {
     return;
   }
   function_stack.top()->llvm_code << "\n; Local variable declarations\n";
+}
+
+void CodeGen::commentStmt() {
+  if (function_stack.empty()) {
+    LOG(ERROR) << "Cannot comment statements; function stack empty";
+    return;
+  }
+  function_stack.top()->llvm_code << "\n; Statements\n";
 }
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -150,11 +150,13 @@ void Parser::programHeader() {
 //    `end' `program'
 void Parser::programBody() {
   LOG(DEBUG) << "<program_body>";
+  code_gen.commentDecl();
   declarations(true); // These are global declarations by default
   LOG(DEBUG) << "Done parsing global declarations";
   LOG(DEBUG) << "Global symbol table:\n" << env->getGlobalStr();
   expectToken(TOK_RW_BEG);
   scan();
+  code_gen.commentStmt();
   statements();
   expectToken(TOK_RW_END);
   scan();
@@ -286,9 +288,11 @@ std::shared_ptr<IdToken> Parser::parameter() {
 //    `end' `procedure'
 void Parser::procedureBody() {
   LOG(DEBUG) << "<procedure_body>";
+  code_gen.commentDecl();
   declarations(false);
   expectToken(TOK_RW_BEG);
   scan();
+  code_gen.commentStmt();
   statements();
   expectToken(TOK_RW_END);
   scan();

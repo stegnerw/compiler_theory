@@ -34,6 +34,7 @@ public:
 
   // Comment functions
   void commentDecl();
+  void commentStmt();
 
 private:
 
