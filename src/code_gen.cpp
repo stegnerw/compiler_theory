@@ -67,6 +67,37 @@ CodeGen::declareVariable(std::shared_ptr<IdToken> id_tok, bool is_global) {
   id_tok->setLlvmHandle(llvm_handle);
 }
 
+void CodeGen::startBasicBlock() {
+
+  // Make sure function stack is okay
+  if (function_stack.empty()) {
+    LOG(ERROR) << "Cannot start basic block with empty function stack";
+    return;
+  }
+  std::shared_ptr<struct Function> fun = function_stack.top();
+
+  // Generate "implied" label explicitly
+  std::string label = std::to_string(fun->reg_count++);
+  startBasicBlock(label);
+}
+
+void CodeGen:: startBasicBlock(const std::string& label) {
+  // Make sure function stack is okay
+  if (function_stack.empty()) {
+    LOG(ERROR) << "Cannot start basic block with empty function stack";
+  }
+  std::shared_ptr<struct Function> fun = function_stack.top();
+
+  // Close basic block if needed
+  if (fun->in_basic_block) {
+    endBasicBlock(label);
+  }
+
+  // Emit label
+  fun->llvm_code << "\n" << label << ":\n";
+  fun->in_basic_block = true;
+}
+
 // TODO: I think I technically need to allocate memory for the parameters and
 // then store the values.
 // Shouldn't be too hard but I have more important things to add...
@@ -114,8 +145,8 @@ void CodeGen::addFunction(std::shared_ptr<IdToken> fun_tok) {
     }
   }
   fun->llvm_code << "){\n";
-  fun->reg_count++;
   function_stack.push(fun);
+  startBasicBlock();
 
   // Allocate memory for new parameters because they are mutable
   fun->llvm_code << "; Allocate parameters\n";
@@ -144,9 +175,11 @@ void CodeGen::closeFunction() {
   std::shared_ptr<struct Function> fun = function_stack.top();
   std::shared_ptr<IdToken> fun_tok = fun->id_tok;
 
-  // Generate a return statement just in case
-  fun->llvm_code << getBlankReturn() + "\n}\n";
-  fun->reg_count++;
+  // Generate a return statement if still in a basic block
+  if (fun->in_basic_block) {
+    fun->llvm_code << getBlankReturn();
+  }
+  fun->llvm_code << "\n}\n\n";
   body_code << fun->llvm_code.str();
   function_stack.pop();
 }
@@ -182,7 +215,7 @@ void CodeGen::store(std::shared_ptr<IdToken> id_tok, std::string reg,
     << llvm_var_tm << "* " << var_reg << "\n";
 }
 
-std::string CodeGen::load(std::shared_ptr<IdToken> id_tok, std::string reg) {
+std::string CodeGen::loadVar(std::shared_ptr<IdToken> id_tok, std::string reg) {
   // Validate id token
   if (id_tok == nullptr || id_tok->getType() == TOK_INVALID) {
     LOG(ERROR) << "Invalid store generation";
@@ -352,4 +385,19 @@ std::string CodeGen::convert(const TypeMark& start_tm, const TypeMark& end_tm,
   // Emit conversion and return new register reference
   function_stack.top()->llvm_code << ss.str();
   return new_reg;
+}
+
+// End the current basic block and jump to the next one
+void CodeGen::endBasicBlock(const std::string& next_label) {
+
+  // Make sure function stack is okay
+  if (function_stack.empty()) {
+    LOG(ERROR) << "Cannot end basic block with empty function stack";
+    return;
+  }
+  std::shared_ptr<struct Function> fun = function_stack.top();
+
+  // Emit unconditional branch to next block
+  fun->llvm_code << "br label %" << next_label << "\n";
+  fun->in_basic_block = false;
 }

@@ -15,7 +15,9 @@ struct Function {
   std::shared_ptr<IdToken> id_tok;
   std::stringstream llvm_code;
   std::stack<int> if_stack, loop_stack;  // For label indexing
-  Function(const std::shared_ptr<IdToken>& id_tok) : id_tok(id_tok) {}
+  bool in_basic_block;
+  Function(const std::shared_ptr<IdToken>& id_tok) :
+    id_tok(id_tok), in_basic_block(false) {}
 };
 
 class CodeGen {
@@ -23,10 +25,12 @@ public:
   CodeGen();
   std::string emitCode();
   void declareVariable(std::shared_ptr<IdToken>, bool);
+  void startBasicBlock();
+  void startBasicBlock(const std::string&);
   void addFunction(std::shared_ptr<IdToken>);
   void closeFunction();
   void store(std::shared_ptr<IdToken>, std::string, const TypeMark&);
-  std::string load(std::shared_ptr<IdToken>, std::string);
+  std::string loadVar(std::shared_ptr<IdToken>, std::string);
 
   // Comment functions
   void commentDecl();
@@ -58,6 +62,7 @@ private:
   std::string getArrayType(const TypeMark&, const int&);
   std::string getBlankReturn();
   std::string convert(const TypeMark&, const TypeMark&, std::string);
+  void endBasicBlock(const std::string&);
 
 };
 
