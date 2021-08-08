@@ -49,6 +49,9 @@ bool Parser::parse() {
     LOG(WARN) << "Parsing had errors; no code generated";
   }{// else {  // TODO: Add back in the else
     LOG(INFO) << "Emitting code:\n" << code_gen.emitCode();
+    std::ofstream ll_file("out.ll", std::ofstream::out);
+    ll_file << code_gen.emitCode();
+    ll_file.close();
   }
   if (tok->getType() != TOK_EOF) {
     LOG(WARN) << "Done parsing but not EOF.";

@@ -124,7 +124,7 @@ void CodeGen::addFunction(std::shared_ptr<IdToken> fun_tok) {
 
   // Store parameters for future access
   // TODO: This
-  fun->llvm_code += "; Storing parameters (coming soon!)\n";
+  fun->llvm_code += "; Store parameters (coming soon!)\n";
 }
 
 void CodeGen::closeFunction() {
