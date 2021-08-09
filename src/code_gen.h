@@ -44,6 +44,7 @@ public:
   void procArg(std::string, const TypeMark&, const TypeMark&,
       const bool&);
   void procCallEnd();
+  void returnStmt(std::string, const TypeMark&, const TypeMark&);
 
   // Comment functions
   void commentDecl();

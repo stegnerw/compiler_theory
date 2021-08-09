@@ -593,6 +593,8 @@ void Parser::returnStatement() {
   if (expr_size > 0) {
     LOG(ERROR) << "Invalid return type; expected scalar, got array";
   }
+  code_gen.returnStmt(expr_handle, tm_expr,
+      function_stack.top()->getTypeMark());
 }
 
 //  <identifier> ::=

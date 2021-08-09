@@ -415,6 +415,22 @@ void CodeGen::procCallEnd() {
   fun->llvm_code << ")\n";
 }
 
+void CodeGen::returnStmt(std::string expr_handle, const TypeMark& expr_tm,
+    const TypeMark& ret_tm) {
+  // Make sure stack is okay
+  if (function_stack.empty()) {
+    LOG(ERROR) << "Cannot add arg with empty function stack";
+    return;
+  }
+  std::shared_ptr<struct Function> fun = function_stack.top();
+  if (expr_tm != ret_tm) {
+    expr_handle =convert(expr_tm, ret_tm, expr_handle);
+  }
+  fun->llvm_code << "ret " << getLlvmType(ret_tm) << " " << expr_handle
+    << "\n\n";
+  fun->in_basic_block = false;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // Comment functions
 ///////////////////////////////////////////////////////////////////////////////
@@ -491,7 +507,7 @@ std::string CodeGen::getBlankReturn() {
       ret += " 0";
       break;
   }
-  return ret;
+  return ret + "  ; auto-generated return";
 }
 
 std::string CodeGen::convert(const TypeMark& start_tm, const TypeMark& end_tm,
@@ -555,7 +571,7 @@ std::string CodeGen::convert(const TypeMark& start_tm, const TypeMark& end_tm,
       return "; BAD CONVERSION";
   }
   // Emit conversion and return new register reference
-  function_stack.top()->llvm_code << ss.str();
+  function_stack.top()->llvm_code << ss.str() << "\n";
   return new_reg;
 }
 
