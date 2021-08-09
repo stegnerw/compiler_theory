@@ -15,6 +15,28 @@ CodeGen::CodeGen() : string_counter(0) {
   string_literals_code << "\n; String literal definitions\n";
   declarations_code << "\n; Runtime declarations\n";
   body_code << "\n; Program body\n";
+
+  // Set up runtime functions
+  function_counter["getbool"]++;
+  function_counter["getinteger"]++;
+  function_counter["getfloat"]++;
+  function_counter["getstring"]++;
+  function_counter["putbool"]++;
+  function_counter["putinteger"]++;
+  function_counter["putfloat"]++;
+  function_counter["putstring"]++;
+  function_counter["sqrt"]++;
+
+  // Declare runtime functions
+  declarations_code << "declare i1 @getbool()\n";
+  declarations_code << "declare i32 @getinteger()\n";
+  declarations_code << "declare float @getfloat()\n";
+  declarations_code << "declare i8* @getstring()\n";
+  declarations_code << "declare i1 @putbool(i1)\n";
+  declarations_code << "declare i1 @putinteger(i32)\n";
+  declarations_code << "declare i1 @putfloat(float)\n";
+  declarations_code << "declare i1 @putstring(i8*)\n";
+  declarations_code << "declare float @sqrt(i32)\n";
 }
 
 std::string CodeGen::emitCode() {
@@ -402,6 +424,7 @@ void CodeGen::procArg(std::string arg_handle, const TypeMark& arg_tm,
   if (arg_tm != param_tm) {
     arg_handle = convert(arg_tm, param_tm, arg_handle);
   }
+  //// It doesn't like the handle here either
   fun->llvm_code << getLlvmType(param_tm) << " " << arg_handle;
 }
 
@@ -468,6 +491,7 @@ void CodeGen::elseStmt() {
     fun->llvm_code << "br label %" << end_label << "\n\n";
   }
   fun->llvm_code << else_label << ":\n";
+  fun->in_basic_block = true;
 }
 
 void CodeGen::endIf() {
@@ -543,9 +567,10 @@ void CodeGen::endFor() {
   }
   int for_num = fun->loop_stack.top();
   fun->loop_stack.pop();
+  std::string for_label = ".for." + std::to_string(for_num);
   std::string end_label = ".endfor." + std::to_string(for_num);
   if (fun->in_basic_block) {
-    fun->llvm_code << "br label %" << end_label << "\n\n";
+    fun->llvm_code << "br label %" << for_label << "\n\n";
   }
   fun->llvm_code << end_label << ":\n";
 }
@@ -709,7 +734,6 @@ void CodeGen::endBasicBlock(const std::string& next_label) {
 }
 
 std::string CodeGen::getStringHandle(const std::string& str) {
-  std::cout << "Getting handle for " << str << std::endl;
   if (string_map.find(str) != string_map.end()) {
     return string_map[str];
   }
@@ -725,6 +749,7 @@ std::string CodeGen::getStringHandle(const std::string& str) {
   ss << "\\00";
   // Emit the global declaration and return handle
   string_literals_code << handle << " = constant "
-    << getArrayType(TYPE_STR, str.length() + 1) << " c\"" << ss.str() << "\"";
+    << getArrayType(TYPE_STR, str.length() + 1) << " c\"" << ss.str()
+    << "\"\n";
   return handle;
 }

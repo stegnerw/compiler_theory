@@ -124,12 +124,12 @@ std::shared_ptr<Token> Scanner::getToken() {
       break;
     // String literal
     case C_QUOTE:
-      do {
+      nextChar();
+      while ((curr_ct != C_QUOTE) && (curr_ct != C_EOF)) {
         v += static_cast<char>(curr_c);
         nextChar();
-      } while ((curr_ct != C_QUOTE) && (curr_ct != C_EOF));
+      }
       if (curr_ct == C_EOF) {
-        v += '"';
         LOG(ERROR) << "EOF before string termination; assuming closed";
       }
       tok = std::shared_ptr<Token>(new LiteralToken<std::string>(TOK_STR, v,

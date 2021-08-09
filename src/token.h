@@ -215,11 +215,15 @@ public:
   void setLlvmHandle(std::string h) { llvm_handle = h; }
   std::string getLlvmHandle() { return llvm_handle; }
 
+  void setPointer(bool b) { pointer = b; }
+  bool getPointer() { return pointer; }
+
 private:
   int num_elements;
   bool procedure;
   std::vector<std::shared_ptr<IdToken>> param_list;
   std::string llvm_handle;
+  bool pointer;
 };
 
 ////////////////////////////////////////////////////////////////////////////////

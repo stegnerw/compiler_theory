@@ -54,6 +54,7 @@ Environment::Environment() {
   builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_IDENT, "getbool"));
   builtin_tok->setTypeMark(TYPE_BOOL);
   builtin_tok->setProcedure(true);
+  builtin_tok->setLlvmHandle("@getbool");
   global_symbol_table.insert(builtin_tok->getVal(), builtin_tok);
 
   // getInteger() : integer value
@@ -61,24 +62,29 @@ Environment::Environment() {
       "getinteger"));
   builtin_tok->setTypeMark(TYPE_INT);
   builtin_tok->setProcedure(true);
+  builtin_tok->setLlvmHandle("@getinteger");
   global_symbol_table.insert(builtin_tok->getVal(), builtin_tok);
 
   // getFloat() : float value
   builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_IDENT, "getfloat"));
   builtin_tok->setTypeMark(TYPE_FLT);
   builtin_tok->setProcedure(true);
+  builtin_tok->setLlvmHandle("@getfloat");
   global_symbol_table.insert(builtin_tok->getVal(), builtin_tok);
 
   // getString() : string value
   builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_IDENT, "getstring"));
   builtin_tok->setTypeMark(TYPE_STR);
   builtin_tok->setProcedure(true);
+  builtin_tok->setLlvmHandle("@getstring");
+  builtin_tok->setPointer(true);
   global_symbol_table.insert(builtin_tok->getVal(), builtin_tok);
 
   // putBool(bool value) : bool
   builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_IDENT, "putbool"));
   builtin_tok->setTypeMark(TYPE_BOOL);
   builtin_tok->setProcedure(true);
+  builtin_tok->setLlvmHandle("@putbool");
   param_tok = std::shared_ptr<IdToken>(new IdToken(TOK_IDENT, "param"));
   param_tok->setTypeMark(TYPE_BOOL);
   builtin_tok->addParam(param_tok);
@@ -89,6 +95,7 @@ Environment::Environment() {
       "putinteger"));
   builtin_tok->setTypeMark(TYPE_BOOL);
   builtin_tok->setProcedure(true);
+  builtin_tok->setLlvmHandle("@putinteger");
   param_tok = std::shared_ptr<IdToken>(new IdToken(TOK_IDENT, "param"));
   param_tok->setTypeMark(TYPE_INT);
   builtin_tok->addParam(param_tok);
@@ -98,6 +105,7 @@ Environment::Environment() {
   builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_IDENT, "putfloat"));
   builtin_tok->setTypeMark(TYPE_BOOL);
   builtin_tok->setProcedure(true);
+  builtin_tok->setLlvmHandle("@putfloat");
   param_tok = std::shared_ptr<IdToken>(new IdToken(TOK_IDENT, "param"));
   param_tok->setTypeMark(TYPE_FLT);
   builtin_tok->addParam(param_tok);
@@ -107,8 +115,10 @@ Environment::Environment() {
   builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_IDENT, "putstring"));
   builtin_tok->setTypeMark(TYPE_BOOL);
   builtin_tok->setProcedure(true);
+  builtin_tok->setLlvmHandle("@putstring");
   param_tok = std::shared_ptr<IdToken>(new IdToken(TOK_IDENT, "param"));
   param_tok->setTypeMark(TYPE_STR);
+  param_tok->setPointer(true);
   builtin_tok->addParam(param_tok);
   global_symbol_table.insert(builtin_tok->getVal(), builtin_tok);
 
@@ -116,6 +126,7 @@ Environment::Environment() {
   builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_IDENT, "sqrt"));
   builtin_tok->setTypeMark(TYPE_FLT);
   builtin_tok->setProcedure(true);
+  builtin_tok->setLlvmHandle("@sqrt");
   param_tok = std::shared_ptr<IdToken>(new IdToken(TOK_IDENT, "param"));
   param_tok->setTypeMark(TYPE_INT);
   builtin_tok->addParam(param_tok);

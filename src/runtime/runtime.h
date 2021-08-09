@@ -6,16 +6,16 @@
 static char str_buff[256];
 
 // get functions
-bool getbool();
-int getinteger();
-float getfloat();
-char* getstring();
+extern bool getbool();
+extern int getinteger();
+extern float getfloat();
+extern char* getstring();
 
 // put functions
-bool putbool(bool);
-bool putinteger(int);
-bool putfloat(float);
-bool putstring(char*);
+extern bool putbool(bool);
+extern bool putinteger(int);
+extern bool putfloat(float);
+extern bool putstring(char*);
 
 // misc functions
 //float sqrt(int);

@@ -30,14 +30,14 @@ bool putbool(bool b) {
   return 0;
 }
 bool putinteger(int i) {
-  printf("%d", i);
+  printf("%d\n", i);
   return 0;
 }
 bool putfloat(float f) {
-  printf("%f", f);
+  printf("%f\n", f);
   return 0;
 }
 bool putstring(char* c) {
-  printf("%s", c);
+  printf("%s\n", c);
   return 0;
 }

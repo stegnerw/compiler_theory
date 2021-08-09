@@ -411,8 +411,6 @@ TypeMark Parser::procedureCall(std::string& handle) {
   if (!id_tok->getProcedure()) {
     LOG(ERROR) << "Expected procedure; got variable " << id_tok->getVal();
   }
-  handle = code_gen.procCallBegin(id_tok->getLlvmHandle(),
-      id_tok->getTypeMark());
   expectToken(TOK_LPAREN);
   if (panic_mode) return TYPE_NONE;  // No need to continue
   scan();
@@ -421,6 +419,8 @@ TypeMark Parser::procedureCall(std::string& handle) {
   if (!matchToken(TOK_RPAREN)) {
     argumentList(0, id_tok, arg_list, tm_list);
   }
+  handle = code_gen.procCallBegin(id_tok->getLlvmHandle(),
+      id_tok->getTypeMark());
   for (size_t i = 0; i < arg_list.size(); i++) {
     code_gen.procArg(arg_list[i], tm_list[i],
         id_tok->getParam(i)->getTypeMark(), i!=0);
@@ -868,7 +868,8 @@ TypeMark Parser::factor(int& size, std::string& handle) {
   } else if (matchToken(TOK_STR)) {
     std::shared_ptr<LiteralToken<std::string>> str_tok = string();
     tm = str_tok->getTypeMark();
-    size = str_tok->getVal().length() + 1;
+    //size = str_tok->getVal().length() + 1;
+    size = 0;
     handle = code_gen.getLitStr(str_tok);
 
   // `true'
