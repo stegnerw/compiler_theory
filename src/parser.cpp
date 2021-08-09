@@ -36,7 +36,7 @@ bool Parser::init(const std::string& src_file) {
 
 //  <program> ::=
 //    <program_header> <program_body> `.'
-bool Parser::parse() {
+bool Parser::parse(const std::string& out_file) {
   LOG(INFO) << "Begin parsing";
   LOG(DEBUG) << "<program>";
   programHeader();
@@ -49,7 +49,7 @@ bool Parser::parse() {
     LOG(WARN) << "Parsing had errors; no code generated";
   }{// else {  // TODO: Add back in the else
     LOG(INFO) << "Emitting code:\n" << code_gen.emitCode();
-    std::ofstream ll_file("out.ll", std::ofstream::out);
+    std::ofstream ll_file(out_file, std::ofstream::out);
     ll_file << code_gen.emitCode();
     ll_file.close();
   }

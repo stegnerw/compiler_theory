@@ -18,6 +18,6 @@ extern bool putfloat(float);
 extern bool putstring(char*);
 
 // misc functions
-//float sqrt(int);
+extern float altsqrt(int);
 
 #endif  // RUNTIME_H

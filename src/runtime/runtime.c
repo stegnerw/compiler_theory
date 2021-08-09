@@ -1,6 +1,7 @@
 #include "runtime.h"
 
 #include <stdio.h>
+#include <math.h>
 
 // get functions
 bool getbool() {
@@ -40,4 +41,9 @@ bool putfloat(float f) {
 bool putstring(char* c) {
   printf("%s\n", c);
   return 0;
+}
+
+// misc functions
+float altsqrt(int i) {
+  return (float) sqrt(i);
 }

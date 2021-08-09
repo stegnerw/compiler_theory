@@ -10,16 +10,16 @@
 #include "token.h"
 #include "parser.h"
 
-bool parse_args(int argc, char* argv[], std::string &src_file,
-    std::string &log_file, bool &show_welcome);
+bool parse_args(int argc, char* argv[], std::string& src_file,
+    std::string& log_file, std::string& out_file, bool& show_welcome);
 void show_usage(std::string prog_name);
 void welcome_msg();
 
 int main(int argc, char* argv[]) {
   // Set up, parse args, etc
-  std::string src_file, log_file;
+  std::string src_file, log_file, out_file;
   bool show_welcome = true;
-  if (!parse_args(argc, argv, src_file, log_file, show_welcome)) {
+  if (!parse_args(argc, argv, src_file, log_file, out_file, show_welcome)) {
     exit(EXIT_FAILURE);
   }
   if (show_welcome) welcome_msg();
@@ -32,18 +32,18 @@ int main(int argc, char* argv[]) {
   }
 
   // Parse the file
-  if (parser.parse()) {
+  if (parser.parse(out_file)) {
     exit(EXIT_SUCCESS);
   } else {
     exit(EXIT_FAILURE);
   }
 }
 
-bool parse_args(int argc, char* argv[], std::string &src_file,
-    std::string &log_file, bool &show_welcome) {
+bool parse_args(int argc, char* argv[], std::string& src_file,
+    std::string& log_file, std::string& out_file, bool& show_welcome) {
   int opt;
   bool error = false;
-  while ((opt = getopt(argc, argv, "hv:i:l:w")) != -1) {
+  while ((opt = getopt(argc, argv, "hv:i:l:o:w")) != -1) {
     switch (opt) {
       case 'h':
         error = true;
@@ -65,6 +65,9 @@ bool parse_args(int argc, char* argv[], std::string &src_file,
           error = true;
         }
         log_file = optarg;
+        break;
+      case 'o':
+        out_file = optarg;
         break;
       case 'w':
         show_welcome = false;
@@ -89,6 +92,7 @@ void show_usage(std::string prog_name) {
         << "\t-h\t\tShow this help message\n"
         << "\t-i INFILE\tSpecify input file to compile\n"
         << "\t-l LOGFILE\tSpecify log file to store debug log\n"
+        << "\t-l OUTFILE\tSpecify .ll file to emit llvm asm into\n"
         << "\t-v LEVEL\tSpecify verbosity level (default 2):\n"
         << "\t\t\t0 - DEBUG\n"
         << "\t\t\t1 - INFO\n"

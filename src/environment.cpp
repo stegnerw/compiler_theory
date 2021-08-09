@@ -126,7 +126,7 @@ Environment::Environment() {
   builtin_tok = std::shared_ptr<IdToken>(new IdToken(TOK_IDENT, "sqrt"));
   builtin_tok->setTypeMark(TYPE_FLT);
   builtin_tok->setProcedure(true);
-  builtin_tok->setLlvmHandle("@sqrt");
+  builtin_tok->setLlvmHandle("@altsqrt");
   param_tok = std::shared_ptr<IdToken>(new IdToken(TOK_IDENT, "param"));
   param_tok->setTypeMark(TYPE_INT);
   builtin_tok->addParam(param_tok);

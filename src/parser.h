@@ -17,7 +17,7 @@ class Parser {
 public:
   Parser();
   bool init(const std::string&);
-  bool parse();  // program
+  bool parse(const std::string&);  // program
 
 private:
   std::shared_ptr<Environment> env;
