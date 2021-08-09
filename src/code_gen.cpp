@@ -491,6 +491,66 @@ void CodeGen::endIf() {
   fun->llvm_code << end_label << ":\n";
 }
 
+void CodeGen::forLabel() {
+  // Make sure stack is okay
+  if (function_stack.empty()) {
+    LOG(ERROR) << "Cannot add if with empty function stack";
+    return;
+  }
+  std::shared_ptr<struct Function> fun = function_stack.top();
+  std::string for_label = ".for." + std::to_string(fun->loop_count);
+  if (fun->in_basic_block) {
+    fun->llvm_code << "br label %" << for_label << "\n\n";
+  }
+  fun->llvm_code << for_label << ":\n";
+  fun->loop_stack.push(fun->loop_count);
+}
+
+void CodeGen::forStmt(std::string expr_handle, const TypeMark& expr_tm) {
+  // Make sure stack is okay
+  if (function_stack.empty()) {
+    LOG(ERROR) << "Cannot add if with empty function stack";
+    return;
+  }
+  std::shared_ptr<struct Function> fun = function_stack.top();
+  // Also check loop stack
+  if (fun->loop_stack.empty()) {
+    LOG(ERROR) << "Cannot add loop with empty loop stack";
+    return;
+  }
+  int for_num = fun->loop_stack.top();
+  if (expr_tm != TYPE_BOOL) {
+    expr_handle =convert(expr_tm, TYPE_BOOL, expr_handle);
+  }
+  std::string body_label = ".body." + std::to_string(for_num);
+  std::string end_label = ".endfor." + std::to_string(for_num);
+  fun->if_stack.push(fun->if_count++);
+  fun->llvm_code << "br i1 " << expr_handle << ", label %" << body_label
+    << ", label %" << end_label << "\n\n";
+  fun->llvm_code << body_label << ":\n";
+}
+void CodeGen::endFor() {
+  // Make sure stack is okay
+  if (function_stack.empty()) {
+    LOG(ERROR) << "Cannot add for with empty function stack";
+    return;
+  }
+  std::shared_ptr<struct Function> fun = function_stack.top();
+  // Also check for stack
+  if (fun->loop_stack.empty()) {
+    LOG(ERROR) << "Cannot add for with empty for stack";
+    return;
+  }
+  int for_num = fun->loop_stack.top();
+  fun->loop_stack.pop();
+  std::string end_label = ".endfor." + std::to_string(for_num);
+  if (fun->in_basic_block) {
+    fun->llvm_code << "br label %" << end_label << "\n\n";
+  }
+  fun->llvm_code << end_label << ":\n";
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////
 // Comment functions
 ///////////////////////////////////////////////////////////////////////////////

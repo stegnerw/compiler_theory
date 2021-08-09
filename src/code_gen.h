@@ -48,6 +48,9 @@ public:
   void ifStmt(std::string, const TypeMark&);
   void elseStmt();
   void endIf();
+  void forLabel();
+  void forStmt(std::string, const TypeMark&);
+  void endFor();
 
   // Comment functions
   void commentDecl();

@@ -551,6 +551,7 @@ void Parser::loopStatement() {
   scan();
 
   // Ensure expression parses to `bool'
+  code_gen.forLabel();
   int expr_size = 0;
   std::string expr_handle;
   TypeMark tm = expression(expr_size, expr_handle);
@@ -562,6 +563,7 @@ void Parser::loopStatement() {
   } else if (expr_size > 0) {
     LOG(ERROR) << "Invalid loop statement; expected scalar, got array";
   }
+  code_gen.forStmt(expr_handle, tm);
   expectToken(TOK_RPAREN);
   if (panic_mode) return;  // No need to continue
   scan();
@@ -571,6 +573,7 @@ void Parser::loopStatement() {
   scan();
   expectToken(TOK_RW_FOR);
   if (panic_mode) return;  // No need to continue
+  code_gen.endFor();
   scan();
 }
 
