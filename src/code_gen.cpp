@@ -419,7 +419,7 @@ void CodeGen::returnStmt(std::string expr_handle, const TypeMark& expr_tm,
     const TypeMark& ret_tm) {
   // Make sure stack is okay
   if (function_stack.empty()) {
-    LOG(ERROR) << "Cannot add arg with empty function stack";
+    LOG(ERROR) << "Cannot add return with empty function stack";
     return;
   }
   std::shared_ptr<struct Function> fun = function_stack.top();
@@ -429,6 +429,66 @@ void CodeGen::returnStmt(std::string expr_handle, const TypeMark& expr_tm,
   fun->llvm_code << "ret " << getLlvmType(ret_tm) << " " << expr_handle
     << "\n\n";
   fun->in_basic_block = false;
+}
+
+void CodeGen::ifStmt(std::string expr_handle, const TypeMark& expr_tm) {
+  // Make sure stack is okay
+  if (function_stack.empty()) {
+    LOG(ERROR) << "Cannot add if with empty function stack";
+    return;
+  }
+  std::shared_ptr<struct Function> fun = function_stack.top();
+  if (expr_tm != TYPE_BOOL) {
+    expr_handle =convert(expr_tm, TYPE_BOOL, expr_handle);
+  }
+  std::string then_label = ".then." + std::to_string(fun->if_count);
+  std::string else_label = ".else." + std::to_string(fun->if_count);
+  fun->if_stack.push(fun->if_count++);
+  fun->llvm_code << "br i1 " << expr_handle << ", label %" << then_label
+    << ", label %" << else_label << "\n\n";
+  fun->llvm_code << then_label << ":\n";
+}
+
+void CodeGen::elseStmt() {
+  // Make sure stack is okay
+  if (function_stack.empty()) {
+    LOG(ERROR) << "Cannot add if with empty function stack";
+    return;
+  }
+  std::shared_ptr<struct Function> fun = function_stack.top();
+  // Also check if stack
+  if (fun->if_stack.empty()) {
+    LOG(ERROR) << "Cannot add if with empty if stack";
+    return;
+  }
+  int if_num = fun->if_stack.top();
+  std::string else_label = ".else." + std::to_string(if_num);
+  std::string end_label = ".endif." + std::to_string(if_num);
+  if (fun->in_basic_block) {
+    fun->llvm_code << "br label %" << end_label << "\n\n";
+  }
+  fun->llvm_code << else_label << ":\n";
+}
+
+void CodeGen::endIf() {
+  // Make sure stack is okay
+  if (function_stack.empty()) {
+    LOG(ERROR) << "Cannot add if with empty function stack";
+    return;
+  }
+  std::shared_ptr<struct Function> fun = function_stack.top();
+  // Also check if stack
+  if (fun->if_stack.empty()) {
+    LOG(ERROR) << "Cannot add if with empty if stack";
+    return;
+  }
+  int if_num = fun->if_stack.top();
+  fun->if_stack.pop();
+  std::string end_label = ".endif." + std::to_string(if_num);
+  if (fun->in_basic_block) {
+    fun->llvm_code << "br label %" << end_label << "\n\n";
+  }
+  fun->llvm_code << end_label << ":\n";
 }
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -45,6 +45,9 @@ public:
       const bool&);
   void procCallEnd();
   void returnStmt(std::string, const TypeMark&, const TypeMark&);
+  void ifStmt(std::string, const TypeMark&);
+  void elseStmt();
+  void endIf();
 
   // Comment functions
   void commentDecl();

@@ -510,6 +510,7 @@ void Parser::ifStatement() {
   } else if (expr_size > 0) {
     LOG(ERROR) << "Invalid if statement; expected scalar, got array";
   }
+  code_gen.ifStmt(expr_handle, tm);
   expectToken(TOK_RPAREN);
   if (panic_mode) return;  // No need to continue
   scan();
@@ -517,11 +518,13 @@ void Parser::ifStatement() {
   if (panic_mode) return;  // No need to continue
   scan();
   statements();
+  code_gen.elseStmt();
   if (matchToken(TOK_RW_ELSE)) {
     LOG(DEBUG) << "Else";
     scan();
     statements();
   }
+  code_gen.endIf();
   expectToken(TOK_RW_END);
   if (panic_mode) return;  // No need to continue
   scan();
