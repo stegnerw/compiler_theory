@@ -1,6 +1,7 @@
 #include "runtime.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 
 // get functions
@@ -20,8 +21,10 @@ float getfloat() {
   return input;
 }
 char* getstring() {
-  scanf("%s", str_buff);
-  return str_buff;
+  // Who is memory and why do I need to manage him?
+  char* input = (char*)malloc(256);
+  scanf("%s", input);
+  return input;
 }
 
 // put functions

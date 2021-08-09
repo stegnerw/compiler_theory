@@ -77,7 +77,6 @@ Environment::Environment() {
   builtin_tok->setTypeMark(TYPE_STR);
   builtin_tok->setProcedure(true);
   builtin_tok->setLlvmHandle("@getstring");
-  builtin_tok->setPointer(true);
   global_symbol_table.insert(builtin_tok->getVal(), builtin_tok);
 
   // putBool(bool value) : bool
@@ -118,7 +117,6 @@ Environment::Environment() {
   builtin_tok->setLlvmHandle("@putstring");
   param_tok = std::shared_ptr<IdToken>(new IdToken(TOK_IDENT, "param"));
   param_tok->setTypeMark(TYPE_STR);
-  param_tok->setPointer(true);
   builtin_tok->addParam(param_tok);
   global_symbol_table.insert(builtin_tok->getVal(), builtin_tok);
 

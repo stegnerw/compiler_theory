@@ -44,10 +44,11 @@ C_BC_FILES	= $(patsubst $(C_TST_DIR)/%.src, $(C_BIN_DIR)/%.bc, $(C_TST_FILES))
 # Incorrect tests
 I_TST_FILES	= $(wildcard $(I_TST_DIR)/*.src)
 I_LOG_FILES	= $(patsubst $(I_TST_DIR)/%.src, $(I_LOG_DIR)/%.log, $(I_TST_FILES))
-I_BIN_FILES	= $(patsubst $(I_TST_DIR)/%.src, $(I_BIN_DIR)/%.ll, $(I_TST_FILES))
+I_LL_FILES	= $(patsubst $(I_TST_DIR)/%.src, $(I_BIN_DIR)/%.ll, $(I_TST_FILES))
 
 # Build Targets
 .PHONY: clean all clean_all
+.PRECIOUS: $(C_LL_FILES) $(I_LL_FILES)
 
 $(TARGET): $(OBJ_FILES) | $(BIN_DIR)
 	$(CC) $(CFLAGS) -o $@ $^
@@ -76,13 +77,13 @@ clean:
 # Something like:
 # $(LOG_DIR)/correct/%.log: $(TST_DIR)/correct/%.src $(TARGET)
 # 	Call $(TARGET) on the stuff and things
-test: $(C_LL_FILES) $(I_LL_FILES)
+test: $(C_BC_FILES) $(I_LL_FILES)
 
 $(C_BIN_DIR)/%.bc: $(C_BIN_DIR)/%.ll | $(C_BIN_DIR)
-	llvm-as $<
+	-llvm-as $<
 
 $(C_BIN_DIR)/%.ll: $(C_TST_DIR)/%.src $(TARGET) | $(C_BIN_DIR)
-	$(TARGET) -w -v 2 -i $< -o $@
+	-$(TARGET) -w -v 2 -i $< -o $@
 
 $(I_BIN_DIR)/%.ll: $(I_TST_DIR)/%.src $(TARGET) | $(I_BIN_DIR)
 	-$(TARGET) -w -v 2 -i $< -o $@

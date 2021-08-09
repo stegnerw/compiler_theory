@@ -3,8 +3,6 @@
 
 #include <stdbool.h>
 
-static char str_buff[256];
-
 // get functions
 extern bool getbool();
 extern int getinteger();

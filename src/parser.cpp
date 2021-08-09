@@ -48,7 +48,6 @@ bool Parser::parse(const std::string& out_file) {
   if (LOG::hasErrored()) {
     LOG(WARN) << "Parsing had errors; no code generated";
   }{// else {  // TODO: Add back in the else
-    LOG(INFO) << "Emitting code:\n" << code_gen.emitCode();
     std::ofstream ll_file(out_file, std::ofstream::out);
     ll_file << code_gen.emitCode();
     ll_file.close();
@@ -747,6 +746,8 @@ TypeMark Parser::relationPrime(const TypeMark& tm, int& size,
     tm_result = TYPE_FLT;
   } else if ((tm == TYPE_INT) || (tm_term == TYPE_INT)) {
     tm_result = TYPE_INT;
+  } else if ((tm == TYPE_STR) || (tm_term == TYPE_STR)) {
+    tm_result = TYPE_STR;
   } else {
     tm_result = TYPE_BOOL;
   }

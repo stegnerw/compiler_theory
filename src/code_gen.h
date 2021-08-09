@@ -79,8 +79,8 @@ private:
   int string_counter;
 
   // Private helper functions
-  std::string getLlvmType(const TypeMark&);
-  std::string getLlvmType(const TypeMark&, const int&);
+  std::string getLlvmType(const TypeMark&, const bool& = true);
+  std::string getArrayType(const TypeMark&, const int&);
   std::string getBlankReturn();
   std::string convert(const TypeMark&, const TypeMark&, std::string);
   void endBasicBlock(const std::string&);

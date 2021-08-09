@@ -26,6 +26,7 @@ CodeGen::CodeGen() : string_counter(0) {
   function_counter["putfloat"]++;
   function_counter["putstring"]++;
   function_counter["sqrt"]++;
+  function_counter["strcmp"]++;
 
   // Declare runtime functions
   declarations_code << "declare i1 @getbool()\n";
@@ -37,6 +38,7 @@ CodeGen::CodeGen() : string_counter(0) {
   declarations_code << "declare i1 @putfloat(float)\n";
   declarations_code << "declare i1 @putstring(i8*)\n";
   declarations_code << "declare float @altsqrt(i32)\n";
+  declarations_code << "declare i32 @strcmp(i8*, i8*)\n";
 }
 
 std::string CodeGen::emitCode() {
@@ -60,7 +62,7 @@ CodeGen::declareVariable(std::shared_ptr<IdToken> id_tok, bool is_global) {
   // Get type info
   TypeMark tm = id_tok->getTypeMark();
   int num_elements = id_tok->getNumElements();
-  std::string llvm_type = getLlvmType(tm, num_elements);
+  std::string llvm_type = getArrayType(tm, num_elements);
   std::string llvm_handle;
   if (is_global) {
     llvm_handle = "@" + id_tok->getVal();
@@ -138,7 +140,7 @@ void CodeGen::addFunction(std::shared_ptr<IdToken> fun_tok) {
     }
     // Get type and handle (naming them by register)
     //std::string param_llvm_handle = "%" + std::to_string(fun->reg_count++);
-    std::string param_llvm_type = getLlvmType(param_tok->getTypeMark(),
+    std::string param_llvm_type = getArrayType(param_tok->getTypeMark(),
         param_tok->getNumElements());
     // My llvm-as doesn't like me putting the handle
     fun->llvm_code << param_llvm_type;// << " " << param_llvm_handle;
@@ -275,7 +277,7 @@ std::string CodeGen::getArrayPtr(const std::string& handle, const int& size,
   std::shared_ptr<struct Function> fun = function_stack.top();
   std::string new_reg = "%" + std::to_string(fun->reg_count++);
   std::stringstream ss;
-  std::string arr_type = getLlvmType(tm, size);
+  std::string arr_type = getArrayType(tm, size);
   ss << new_reg << " = getelementptr " << arr_type << ", " << arr_type << "* "
     << handle << ", i32 0, i32 " << idx_handle << "\n";
   // Emit statement and return reg
@@ -299,6 +301,15 @@ std::string CodeGen::binaryOp(std::string lhs_handle, const TypeMark& lhs_tm,
   }
   TokenType tt = op_tok->getType();
   std::string op = op_tok->getVal();
+  // Call strcmp if it's a string comparison, quick and dirty
+  if (cast_tm == TYPE_STR && op == "==") {
+    std::string reg = "%" + std::to_string(fun->reg_count++);
+    fun->llvm_code << reg << " = call i32 @strcmp ( i8* " << lhs_handle
+      << ", i8* " << rhs_handle << ")\n";
+    reg = convert(TYPE_INT, TYPE_BOOL, reg);
+    reg = unaryOp(reg, TYPE_BOOL, std::make_shared<Token>(TOK_OP_EXPR, "not"));
+    return reg;
+  }
   // Convert types if needed
   if (lhs_tm != cast_tm) {
     lhs_handle = convert(lhs_tm, cast_tm, lhs_handle);
@@ -600,29 +611,32 @@ void CodeGen::commentStmt() {
 // Private functions
 ///////////////////////////////////////////////////////////////////////////////
 
-std::string CodeGen::getLlvmType(const TypeMark& tm) {
+std::string CodeGen::getLlvmType(const TypeMark& tm, const bool& ptr) {
+  std::string ret_val;
   switch (tm) {
     case TYPE_INT:
-      return "i32";
+      ret_val = "i32";
       break;
     case TYPE_FLT:
-      return "float";
+      ret_val = "float";
       break;
     case TYPE_STR:
-      return "i8";
+      ret_val = "i8";
+      if (ptr) ret_val += "*";
       break;
     case TYPE_BOOL:
-      return "i1";
+      ret_val = "i1";
       break;
     default:
-      return "BAD_TYPE";
+      ret_val = "BAD_TYPE";
       break;
   }
+  return ret_val;
 }
 
-std::string CodeGen::getLlvmType(const TypeMark& tm, const int& size) {
+std::string CodeGen::getArrayType(const TypeMark& tm, const int& size) {
   if (size == 0) return getLlvmType(tm);
-  return "[" + std::to_string(size) + " x " + getLlvmType(tm) + "]";
+  return "[" + std::to_string(size) + " x " + getLlvmType(tm, false) + "]";
 }
 
 std::string CodeGen::getBlankReturn() {
@@ -645,9 +659,8 @@ std::string CodeGen::getBlankReturn() {
       ret += " false";
       break;
     case TYPE_STR:
-      ret += "* ";
+      ret += "* 0";
       break;
-      // TODO: Do the stuff and things
     default:
       ret += " 0";
       break;
@@ -749,7 +762,7 @@ std::string CodeGen::getStringHandle(const std::string& str) {
   ss << "\\00";
   // Emit the global declaration and return handle
   string_literals_code << handle << " = constant "
-    << getLlvmType(TYPE_STR, str.length() + 1) << " c\"" << ss.str()
+    << getArrayType(TYPE_STR, str.length() + 1) << " c\"" << ss.str()
     << "\"\n";
   return handle;
 }
