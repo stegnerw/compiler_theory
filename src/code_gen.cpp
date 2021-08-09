@@ -242,6 +242,54 @@ CodeGen::loadVar(std::shared_ptr<IdToken> id_tok, std::string reg) {
   return new_reg;
 }
 
+std::string CodeGen::getLitNum(std::shared_ptr<Token> tok) {
+  std::string ret_val;
+
+  // Parse int
+  auto int_tok = std::dynamic_pointer_cast<LiteralToken<int>>(tok);
+  if (int_tok != nullptr) {
+    ret_val = std::to_string(int_tok->getVal());
+  }
+
+  // Parse float to byte string (holy moly this took me a while)
+  auto flt_tok = std::dynamic_pointer_cast<LiteralToken<float>>(tok);
+  if (flt_tok != nullptr) {
+    //ret_val = "0x00000000";
+    std::stringstream ss;
+    ss << "0x";
+    float f = flt_tok->getVal();
+    auto c_ptr = reinterpret_cast<unsigned char*>(&f);
+    for (size_t i = 0; i < sizeof(float); i++) {
+      ss << std::setw(2) << std::setfill('0') << std::hex
+        << static_cast<int>(c_ptr[sizeof(float) - 1 - i]);
+    }
+    ret_val = ss.str();
+  }
+
+  // Conversion failed
+  if (int_tok == nullptr && flt_tok == nullptr) {
+    LOG(ERROR) << "Attempt to generate invalid number";
+    ret_val = "NUM_INVALID";
+  }
+
+  return ret_val;
+}
+
+// This actually has to load and potentially allocate globals
+std::string CodeGen::getLitStr(std::shared_ptr<Token> tok) {
+  std::string ret_val;
+
+  auto str_tok = std::dynamic_pointer_cast<LiteralToken<std::string>>(tok);
+  if (str_tok != nullptr) {
+    std::string str = str_tok->getVal();
+    std::string str_handle = getStringHandle(str);
+  } else {
+    LOG(ERROR) << "Attempt to generate invalid string";
+    ret_val = "STR_INVALID";
+  }
+
+  return ret_val;
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // Comment functions
@@ -409,4 +457,28 @@ void CodeGen::endBasicBlock(const std::string& next_label) {
   // Emit unconditional branch to next block
   fun->llvm_code << "br label %" << next_label << "\n";
   fun->in_basic_block = false;
+}
+
+std::string CodeGen::getStringHandle(const std::string& str) {
+  std::cout << "Getting handle for " << str << std::endl;
+  if (string_map.find(str) != string_map.end()) {
+    return string_map[str];
+  }
+
+  // Add new handle to map
+  std::string handle = "@.str." + std::to_string(string_counter++);
+  string_map[str] = handle;
+
+  // Just make it a hex string to avoid problems
+  std::stringstream ss;
+  for (unsigned int i = 0; i < str.length(); i++) {
+    int c = str[i];
+    ss << "\\" << std::setw(2) << std::setfill('0') << std::hex << c;
+  }
+  ss << "\\00";
+
+  // Emit the global declaration and return handle
+  string_literals_code << handle << " = constant "
+    << getArrayType(TYPE_STR, str.length() + 1) << " c\"" << ss.str() << "\"";
+  return handle;
 }

@@ -31,6 +31,8 @@ public:
   void closeFunction();
   void store(std::shared_ptr<IdToken>, std::string, const TypeMark&);
   std::string loadVar(std::shared_ptr<IdToken>, std::string);
+  std::string getLitNum(std::shared_ptr<Token>);
+  std::string getLitStr(std::shared_ptr<Token>);
 
   // Comment functions
   void commentDecl();
@@ -55,8 +57,8 @@ private:
   std::unordered_map<std::string, int> function_counter;
 
   // String tracking
-  //std::unordered_map<std::string, std::string> string_map;
-  //int string_counter;
+  std::unordered_map<std::string, std::string> string_map;
+  int string_counter;
 
   // Private helper functions
   std::string getLlvmType(const TypeMark&);
@@ -64,7 +66,7 @@ private:
   std::string getBlankReturn();
   std::string convert(const TypeMark&, const TypeMark&, std::string);
   void endBasicBlock(const std::string&);
-
+  std::string getStringHandle(const std::string&);
 };
 
 #endif // CODE_GEN_H

@@ -759,6 +759,7 @@ TypeMark Parser::termPrime(const TypeMark& tm, int& size) {
 TypeMark Parser::factor(int& size) {
   LOG(DEBUG) << "<factor>";
   TypeMark tm = TYPE_NONE;
+  std::string llvm_code;
 
   // Negative sign can only happen before <number> and <name>
   if (matchToken(TOK_OP_ARITH) && (tok->getVal() == "-")) {
@@ -778,6 +779,7 @@ TypeMark Parser::factor(int& size) {
       std::shared_ptr<Token> num_tok = number();
       tm = num_tok->getTypeMark();
       size = 0;  // <number> literals are scalar
+      llvm_code = code_gen.getLitNum(num_tok);
     } else {
       LOG(ERROR) << "Minus sign must be followed by <name> or <number>.";
       LOG(ERROR) << "Got: " << tok->getStr();
@@ -810,23 +812,27 @@ TypeMark Parser::factor(int& size) {
     std::shared_ptr<Token> num_tok = number();
     tm = num_tok->getTypeMark();
     size = 0;  // <number> literals are scalars
+    llvm_code = code_gen.getLitNum(num_tok);
 
   // <string>
   } else if (matchToken(TOK_STR)) {
     std::shared_ptr<LiteralToken<std::string>> str_tok = string();
     tm = str_tok->getTypeMark();
-    size = 0;  // <string> literals are scalars
+    size = str_tok->getVal().length() + 1;
+    llvm_code = code_gen.getLitStr(str_tok);
 
   // `true'
   } else if (matchToken(TOK_RW_TRUE)) {
     tm = TYPE_BOOL;
     size = 0;  // `true' literals are scalars
+    llvm_code = "1";
     scan();
 
   // `false'
   } else if (matchToken(TOK_RW_FALSE)) {
     tm = TYPE_BOOL;
     size = 0;  // `false' literals are scalars
+    llvm_code = "0";
     scan();
 
   // Oof
