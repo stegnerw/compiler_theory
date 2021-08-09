@@ -17,7 +17,8 @@ struct Function {
   std::stack<int> if_stack, loop_stack;  // For label indexing
   bool in_basic_block;
   Function(const std::shared_ptr<IdToken>& id_tok) :
-    id_tok(id_tok), in_basic_block(false) {}
+    if_count(0), loop_count(0), reg_count(0), id_tok(id_tok),
+    in_basic_block(false) {}
 };
 
 class CodeGen {
@@ -29,10 +30,20 @@ public:
   void startBasicBlock(const std::string&);
   void addFunction(std::shared_ptr<IdToken>);
   void closeFunction();
-  void store(std::shared_ptr<IdToken>, std::string, const TypeMark&);
-  std::string loadVar(std::shared_ptr<IdToken>, std::string);
+  void store(std::string, const TypeMark&, std::string, const TypeMark&);
+  std::string loadVar(std::string, const TypeMark&);
   std::string getLitNum(std::shared_ptr<Token>);
   std::string getLitStr(std::shared_ptr<Token>);
+  std::string getArrayPtr(const std::string&, const int&, const TypeMark&,
+      std::string);
+  std::string binaryOp(std::string, const TypeMark&, std::string,
+      const TypeMark&, const TypeMark&, std::shared_ptr<Token>);
+  std::string unaryOp(std::string, const TypeMark&,
+      std::shared_ptr<Token>);
+  std::string procCallBegin(const std::string&, const TypeMark&);
+  void procArg(std::string, const TypeMark&, const TypeMark&,
+      const bool&);
+  void procCallEnd();
 
   // Comment functions
   void commentDecl();
